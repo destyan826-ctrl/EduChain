@@ -1,0 +1,1999 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+<title>EduChain · Admin Console</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Sora:wght@600;700;800&family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.1/css/all.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcodejs/1.0.0/qrcode.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/ethers@6/dist/ethers.umd.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+
+<!-- ======================================================================
+     CSS — design tokens: "ledger" identity — an admin registry crossed
+     with a wallet/ID-card system. Signature motif: perforated ledger
+     cards (ticket-stub notches) used for identity records + QR panels.
+====================================================================== -->
+<style>
+:root{
+  --ink:#0A0F1E;
+  --ink-soft:#131B30;
+  --ink-line:#232E4A;
+  --paper:#EEF1F9;
+  --surface:#FFFFFF;
+  --surface-2:#F6F8FD;
+  --border:#E1E5F0;
+  --primary:#3450D3;
+  --primary-dark:#28399E;
+  --primary-soft:#E8ECFC;
+  --accent:#0EA894;
+  --accent-soft:#DFF7F2;
+  --amber:#E08A1E;
+  --amber-soft:#FBEEDA;
+  --danger:#DC4C4C;
+  --danger-soft:#FBE7E7;
+  --text:#0F1526;
+  --text-soft:#5B6478;
+  --text-faint:#96A0B5;
+  --r-sm:8px;
+  --r-md:14px;
+  --r-lg:22px;
+  --shadow-sm:0 1px 2px rgba(15,21,38,.06),0 1px 1px rgba(15,21,38,.04);
+  --shadow-md:0 12px 32px -12px rgba(15,21,38,.22);
+  --shadow-lg:0 24px 60px -20px rgba(15,21,38,.35);
+  --font-d:'Sora',sans-serif;
+  --font-b:'Inter',sans-serif;
+  --font-m:'JetBrains Mono',monospace;
+  --sidebar-w:264px;
+  --topbar-h:64px;
+  --bottomnav-h:64px;
+}
+[data-theme="dark"]{
+  --paper:#0A0F1E;
+  --surface:#131B30;
+  --surface-2:#0F1729;
+  --border:#232E4A;
+  --text:#EBEFFA;
+  --text-soft:#9AA5BD;
+  --text-faint:#5C6883;
+  --primary-soft:#1B2550;
+  --accent-soft:#0E2C29;
+  --amber-soft:#332510;
+  --danger-soft:#331A1A;
+  --shadow-md:0 12px 32px -12px rgba(0,0,0,.55);
+  --shadow-lg:0 24px 60px -20px rgba(0,0,0,.7);
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{scroll-behavior:smooth}
+body{
+  font-family:var(--font-b);
+  background:var(--paper);
+  color:var(--text);
+  line-height:1.5;
+  -webkit-font-smoothing:antialiased;
+  overflow-x:hidden;
+}
+h1,h2,h3,h4{font-family:var(--font-d);letter-spacing:-0.01em;color:var(--text)}
+code,.mono{font-family:var(--font-m)}
+a{color:inherit;text-decoration:none}
+button{font-family:var(--font-b);cursor:pointer;border:none;background:none;color:inherit}
+input,select,textarea{font-family:var(--font-b);color:var(--text)}
+::-webkit-scrollbar{width:10px;height:10px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:8px}
+::-webkit-scrollbar-thumb:hover{background:var(--text-faint)}
+:focus-visible{outline:2px solid var(--primary);outline-offset:2px;border-radius:4px}
+@media (prefers-reduced-motion:reduce){*{animation-duration:.01ms !important;transition-duration:.01ms !important}}
+
+.hidden{display:none !important}
+.eyebrow{font-size:11px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:var(--primary)}
+
+/* ---------- buttons / inputs ---------- */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:600;font-size:14px;
+  padding:11px 18px;border-radius:var(--r-sm);transition:transform .12s,box-shadow .12s,background .15s;white-space:nowrap;position:relative;overflow:hidden}
+.btn:active{transform:scale(.97)}
+.btn-primary{background:var(--primary);color:#fff;box-shadow:0 6px 16px -6px rgba(52,80,211,.55)}
+.btn-primary:hover{background:var(--primary-dark)}
+.btn-accent{background:var(--accent);color:#fff}
+.btn-ghost{background:var(--surface-2);color:var(--text);border:1px solid var(--border)}
+.btn-ghost:hover{background:var(--border)}
+.btn-danger{background:var(--danger-soft);color:var(--danger)}
+.btn-danger:hover{background:var(--danger);color:#fff}
+.btn-block{width:100%}
+.btn-sm{padding:7px 12px;font-size:12.5px;border-radius:7px}
+.btn-icon{width:38px;height:38px;padding:0;border-radius:var(--r-sm)}
+.ripple{position:absolute;border-radius:50%;background:rgba(255,255,255,.55);transform:scale(0);animation:rip .55s ease-out}
+@keyframes rip{to{transform:scale(3);opacity:0}}
+
+.field{margin-bottom:16px}
+.field label{display:block;font-size:12.5px;font-weight:600;color:var(--text-soft);margin-bottom:6px}
+.field .req{color:var(--danger)}
+.input,.select,.textarea{width:100%;padding:11px 13px;border-radius:var(--r-sm);border:1.5px solid var(--border);
+  background:var(--surface-2);font-size:14px;transition:border-color .15s,background .15s}
+.input:focus,.select:focus,.textarea:focus{border-color:var(--primary);background:var(--surface)}
+.textarea{resize:vertical;min-height:74px}
+.field-error{font-size:12px;color:var(--danger);margin-top:5px;display:none}
+.field.invalid .input,.field.invalid .select,.field.invalid .textarea{border-color:var(--danger);background:var(--danger-soft)}
+.field.invalid .field-error{display:block}
+.field-hint{font-size:11.5px;color:var(--text-faint);margin-top:5px}
+.input-group{position:relative}
+.input-group .toggle-eye{position:absolute;right:10px;top:50%;transform:translateY(-50%);color:var(--text-faint);padding:6px}
+.pw-strength{display:flex;gap:4px;margin-top:7px}
+.pw-strength i{height:4px;flex:1;border-radius:3px;background:var(--border);transition:background .2s}
+
+/* ---------- loading screen ---------- */
+#screen-loading{position:fixed;inset:0;background:var(--ink);display:flex;align-items:center;justify-content:center;flex-direction:column;gap:18px;z-index:999}
+.boot-logo{width:64px;height:64px;border-radius:16px;background:linear-gradient(135deg,var(--primary),var(--accent));
+  display:flex;align-items:center;justify-content:center;font-size:26px;color:#fff;animation:pulse 1.4s ease-in-out infinite}
+@keyframes pulse{0%,100%{transform:scale(1)}50%{transform:scale(1.08)}}
+.boot-text{color:#fff;font-family:var(--font-d);font-weight:700;letter-spacing:.02em}
+.boot-bar{width:180px;height:3px;border-radius:3px;background:rgba(255,255,255,.12);overflow:hidden}
+.boot-bar i{display:block;height:100%;width:40%;background:var(--accent);animation:boot 1.1s ease-in-out infinite}
+@keyframes boot{0%{transform:translateX(-100%)}100%{transform:translateX(350%)}}
+
+/* ---------- auth screens (setup / login) ---------- */
+.auth-wrap{min-height:100vh;display:flex}
+.auth-side{flex:1;background:var(--ink);color:#fff;display:flex;flex-direction:column;justify-content:space-between;padding:48px;position:relative;overflow:hidden}
+.auth-side::before{content:'';position:absolute;inset:0;background:
+  radial-gradient(circle at 20% 20%,rgba(52,80,211,.35),transparent 45%),
+  radial-gradient(circle at 80% 75%,rgba(14,168,148,.28),transparent 45%)}
+.auth-side .brand{display:flex;align-items:center;gap:12px;position:relative;font-family:var(--font-d);font-weight:700;font-size:20px}
+.auth-side .brand .mark{width:38px;height:38px;border-radius:10px;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center}
+.auth-side .pitch{position:relative;max-width:420px}
+.auth-side .pitch h1{font-size:34px;line-height:1.2;margin-bottom:14px}
+.auth-side .pitch p{color:#B7C0DA;font-size:14.5px}
+.chain-strip{position:relative;display:flex;gap:10px;flex-wrap:wrap;margin-top:28px}
+.chain-strip span{font-family:var(--font-m);font-size:11px;background:rgba(255,255,255,.07);border:1px solid rgba(255,255,255,.12);
+  padding:6px 10px;border-radius:20px;color:#9FB0E0}
+.auth-side .foot{position:relative;font-size:12px;color:#6B7699}
+.auth-main{width:480px;max-width:100%;display:flex;align-items:center;justify-content:center;padding:32px;background:var(--surface)}
+.auth-card{width:100%;max-width:380px}
+.auth-card h2{font-size:24px;margin-bottom:6px}
+.auth-card .sub{color:var(--text-soft);font-size:13.5px;margin-bottom:26px}
+.step-dots{display:flex;gap:6px;margin-bottom:22px}
+.step-dots i{height:4px;flex:1;border-radius:3px;background:var(--border)}
+.step-dots i.done{background:var(--accent)}
+.step-dots i.active{background:var(--primary)}
+
+/* seed phrase reveal */
+.seed-warning{display:flex;gap:10px;background:var(--amber-soft);color:#7A5310;border:1px solid #EBD3A0;padding:12px 14px;border-radius:var(--r-sm);font-size:12.5px;margin-bottom:16px}
+.seed-warning i{margin-top:1px}
+.seed-panel{position:relative;background:var(--ink);border-radius:var(--r-md);padding:18px;margin-bottom:16px}
+.seed-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;filter:blur(7px);transition:filter .25s;user-select:none}
+.seed-grid.revealed{filter:blur(0)}
+.seed-word{display:flex;align-items:center;gap:8px;background:rgba(255,255,255,.06);border-radius:8px;padding:8px 10px;font-family:var(--font-m);font-size:12.5px;color:#DCE3F7}
+.seed-word b{color:var(--accent);font-weight:600;width:16px}
+.seed-reveal-overlay{position:absolute;inset:18px;display:flex;align-items:center;justify-content:center;flex-direction:column;gap:10px}
+.seed-reveal-overlay.hide{display:none}
+.seed-confirm-grid{display:flex;flex-direction:column;gap:14px;margin-bottom:16px}
+.seed-confirm-item .q{font-size:12.5px;color:var(--text-soft);margin-bottom:8px}
+.chip-row{display:flex;gap:8px;flex-wrap:wrap}
+.chip{padding:8px 14px;border-radius:20px;border:1.5px solid var(--border);font-family:var(--font-m);font-size:12.5px;background:var(--surface-2)}
+.chip.selected{border-color:var(--primary);background:var(--primary-soft);color:var(--primary-dark)}
+.link-btn{color:var(--primary);font-weight:600;font-size:13px}
+.link-btn:hover{text-decoration:underline}
+
+/* ---------- toast ---------- */
+#toast-container{position:fixed;top:18px;right:18px;z-index:900;display:flex;flex-direction:column;gap:10px;max-width:340px}
+.toast{display:flex;gap:10px;align-items:flex-start;background:var(--ink);color:#fff;padding:13px 15px;border-radius:var(--r-sm);
+  box-shadow:var(--shadow-lg);font-size:13px;animation:toastin .25s ease}
+.toast i{margin-top:1px}
+.toast.success i{color:var(--accent)}
+.toast.error i{color:#F08080}
+.toast.info i{color:#8FB3FF}
+@keyframes toastin{from{transform:translateX(30px);opacity:0}to{transform:translateX(0);opacity:1}}
+
+/* ---------- modal ---------- */
+.modal-backdrop{position:fixed;inset:0;background:rgba(10,15,30,.55);backdrop-filter:blur(2px);z-index:800;display:flex;align-items:center;justify-content:center;padding:16px;opacity:0;pointer-events:none;transition:opacity .2s}
+.modal-backdrop.open{opacity:1;pointer-events:auto}
+.modal{background:var(--surface);border-radius:var(--r-lg);width:100%;max-width:560px;max-height:88vh;display:flex;flex-direction:column;
+  box-shadow:var(--shadow-lg);transform:translateY(16px) scale(.98);opacity:0;transition:transform .22s,opacity .22s}
+.modal-backdrop.open .modal{transform:translateY(0) scale(1);opacity:1}
+.modal-head{display:flex;align-items:center;justify-content:space-between;padding:20px 22px;border-bottom:1px solid var(--border)}
+.modal-head h3{font-size:17px}
+.modal-body{padding:22px;overflow-y:auto}
+.modal-foot{padding:16px 22px;border-top:1px solid var(--border);display:flex;justify-content:flex-end;gap:10px}
+.modal.modal-lg{max-width:680px}
+
+/* ---------- ledger card (signature motif) ---------- */
+.ledger-card{background:var(--surface);border-radius:var(--r-lg);overflow:hidden;box-shadow:var(--shadow-sm);border:1px solid var(--border)}
+.ledger-head{background:var(--ink);color:#fff;padding:18px 20px;display:flex;align-items:center;gap:14px;position:relative}
+.ledger-avatar{width:46px;height:46px;border-radius:12px;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;font-weight:700;font-family:var(--font-d)}
+.ledger-head .meta small{color:#8C9AC2;font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+.ledger-head .meta div{font-family:var(--font-d);font-weight:700;font-size:15px}
+.ledger-perf{position:relative;height:0}
+.ledger-perf::before,.ledger-perf::after{content:'';position:absolute;top:-9px;width:18px;height:18px;border-radius:50%;background:var(--paper)}
+.ledger-perf::before{left:-9px}.ledger-perf::after{right:-9px}
+.ledger-dash{border-top:2px dashed var(--border)}
+.ledger-body{padding:18px 20px;display:flex;flex-direction:column;gap:10px}
+.ledger-row{display:flex;justify-content:space-between;gap:10px;font-size:12.5px}
+.ledger-row .k{color:var(--text-faint)}
+.ledger-row .v{font-family:var(--font-m);font-weight:500;text-align:right;word-break:break-all}
+
+/* ---------- app shell ---------- */
+#app-shell,#guru-shell{display:flex;min-height:100vh}
+.sidebar-desktop{width:var(--sidebar-w);background:var(--ink);color:#fff;flex-shrink:0;display:flex;flex-direction:column;padding:22px 16px;position:sticky;top:0;height:100vh}
+.sidebar-desktop .brand{display:flex;align-items:center;gap:11px;padding:0 8px 22px;font-family:var(--font-d);font-weight:700;font-size:18px}
+.sidebar-desktop .brand .mark{width:34px;height:34px;border-radius:9px;background:linear-gradient(135deg,var(--primary),var(--accent));display:flex;align-items:center;justify-content:center;font-size:15px}
+.nav-group-label{font-size:10.5px;text-transform:uppercase;letter-spacing:.1em;color:#5C6889;padding:14px 12px 6px}
+.nav-item{display:flex;align-items:center;gap:12px;padding:11px 12px;border-radius:10px;color:#AAB4D4;font-size:13.5px;font-weight:500;margin-bottom:2px;transition:background .15s,color .15s;position:relative}
+.nav-item i{width:18px;text-align:center;font-size:15px}
+.nav-item:hover{background:rgba(255,255,255,.06);color:#fff}
+.nav-item.active{background:linear-gradient(90deg,var(--primary),var(--primary-dark));color:#fff;box-shadow:0 6px 16px -6px rgba(52,80,211,.6)}
+.nav-item .badge-count{margin-left:auto;background:rgba(255,255,255,.12);font-size:10.5px;padding:2px 7px;border-radius:10px}
+.sidebar-desktop .nav-scroll{flex:1;overflow-y:auto}
+.sidebar-foot{border-top:1px solid var(--ink-line);padding-top:14px;margin-top:10px}
+
+.main-col{flex:1;min-width:0;display:flex;flex-direction:column}
+.topbar-desktop{height:var(--topbar-h);border-bottom:1px solid var(--border);background:var(--surface);display:flex;align-items:center;gap:18px;padding:0 26px;position:sticky;top:0;z-index:40}
+.page-title{font-size:19px;font-weight:700;font-family:var(--font-d)}
+.search-box{flex:1;max-width:380px;position:relative}
+.search-box i{position:absolute;left:13px;top:50%;transform:translateY(-50%);color:var(--text-faint);font-size:13px}
+.search-box input{width:100%;padding:9px 12px 9px 34px;border-radius:20px;border:1px solid var(--border);background:var(--surface-2);font-size:13px}
+.topbar-right{display:flex;align-items:center;gap:14px;margin-left:auto}
+.clock-box{text-align:right;font-size:11.5px;color:var(--text-soft);line-height:1.3}
+.clock-box b{display:block;font-size:12.5px;color:var(--text)}
+.bell-wrap{position:relative}
+.bell-btn{width:38px;height:38px;border-radius:50%;background:var(--surface-2);display:flex;align-items:center;justify-content:center;border:1px solid var(--border)}
+.bell-dot{position:absolute;top:6px;right:6px;width:8px;height:8px;border-radius:50%;background:var(--danger);border:2px solid var(--surface)}
+.avatar-chip{display:flex;align-items:center;gap:9px;cursor:pointer;padding:5px 10px 5px 5px;border-radius:24px;border:1px solid var(--border)}
+.avatar-circle{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--primary),var(--accent));color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px;font-weight:700;font-family:var(--font-d)}
+.avatar-chip .who{font-size:12px;line-height:1.25}
+.avatar-chip .who b{display:block;font-size:12.5px}
+.avatar-chip .who span{color:var(--text-faint)}
+
+.mobile-topbar{display:none;align-items:center;gap:12px;padding:0 16px;height:58px;background:var(--surface);border-bottom:1px solid var(--border);position:sticky;top:0;z-index:40}
+.mobile-topbar .page-title{font-size:16px}
+.mobile-topbar .avatar-circle{width:32px;height:32px}
+
+.content{padding:26px;flex:1}
+.content-mobile-pad{padding:16px 16px calc(var(--bottomnav-h) + 24px)}
+
+/* bottom nav (mobile-only navigation paradigm) */
+.bottom-nav{display:none;position:fixed;left:0;right:0;bottom:0;height:var(--bottomnav-h);background:var(--surface);border-top:1px solid var(--border);
+  align-items:center;justify-content:space-around;z-index:60;box-shadow:0 -6px 20px -10px rgba(0,0,0,.15)}
+.bn-item{display:flex;flex-direction:column;align-items:center;gap:3px;font-size:10px;color:var(--text-faint);flex:1;padding:6px 0}
+.bn-item i{font-size:17px}
+.bn-item.active{color:var(--primary)}
+
+/* slide-up sheet (mobile "more" menu) */
+.sheet-backdrop{position:fixed;inset:0;background:rgba(10,15,30,.5);z-index:850;opacity:0;pointer-events:none;transition:opacity .2s}
+.sheet-backdrop.open{opacity:1;pointer-events:auto}
+.sheet{position:fixed;left:0;right:0;bottom:0;background:var(--surface);border-radius:22px 22px 0 0;z-index:860;padding:10px 8px calc(env(safe-area-inset-bottom) + 14px);
+  transform:translateY(100%);transition:transform .25s cubic-bezier(.32,.72,0,1);max-height:75vh;overflow-y:auto}
+.sheet.open{transform:translateY(0)}
+.sheet-handle{width:38px;height:4px;background:var(--border);border-radius:3px;margin:6px auto 12px}
+.sheet .nav-item{color:var(--text)}
+.sheet .nav-item:hover{background:var(--surface-2)}
+.sheet .nav-item.active{background:var(--primary-soft);color:var(--primary-dark);box-shadow:none}
+
+/* ---------- cards / stats ---------- */
+.grid{display:grid;gap:16px}
+.grid-stats{grid-template-columns:repeat(4,1fr)}
+.grid-2{grid-template-columns:1.4fr 1fr}
+.grid-3{grid-template-columns:repeat(3,1fr)}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:20px}
+.card-title{font-size:14.5px;font-weight:700;margin-bottom:14px;display:flex;align-items:center;justify-content:space-between}
+.stat-card{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);padding:18px;display:flex;flex-direction:column;gap:10px;position:relative;overflow:hidden}
+.stat-card .top{display:flex;align-items:center;justify-content:space-between}
+.stat-icon{width:38px;height:38px;border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:15px}
+.stat-num{font-family:var(--font-d);font-size:28px;font-weight:700;line-height:1}
+.stat-label{font-size:12px;color:var(--text-soft)}
+.stat-trend{font-size:11px;font-weight:600}
+.stat-trend.up{color:var(--accent)}
+.stat-trend.down{color:var(--danger)}
+.skeleton{background:linear-gradient(90deg,var(--surface-2) 25%,var(--border) 37%,var(--surface-2) 63%);background-size:400% 100%;animation:sk 1.4s ease infinite;border-radius:8px}
+@keyframes sk{0%{background-position:100% 50%}100%{background-position:0 50%}}
+
+/* ---------- table ---------- */
+.toolbar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin-bottom:16px}
+.toolbar .search-box{max-width:260px}
+.table-wrap{background:var(--surface);border:1px solid var(--border);border-radius:var(--r-lg);overflow:hidden}
+table{width:100%;border-collapse:collapse;font-size:13px}
+thead th{text-align:left;padding:13px 16px;background:var(--surface-2);color:var(--text-soft);font-size:11.5px;text-transform:uppercase;letter-spacing:.05em;font-weight:700;cursor:pointer;white-space:nowrap}
+thead th i{margin-left:5px;font-size:10px;color:var(--text-faint)}
+tbody td{padding:12px 16px;border-top:1px solid var(--border);vertical-align:middle}
+tbody tr{transition:background .12s}
+tbody tr:hover{background:var(--surface-2)}
+.row-avatar{width:32px;height:32px;border-radius:9px;background:var(--primary-soft);color:var(--primary-dark);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:700;font-family:var(--font-d)}
+.badge{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:600;padding:4px 10px;border-radius:20px}
+.badge-success{background:var(--accent-soft);color:#0B7A6B}
+.badge-warning{background:var(--amber-soft);color:#8A5D12}
+.badge-danger{background:var(--danger-soft);color:var(--danger)}
+.badge-info{background:var(--primary-soft);color:var(--primary-dark)}
+.row-actions{display:flex;gap:5px;justify-content:flex-end}
+.icon-btn{width:30px;height:30px;border-radius:8px;display:flex;align-items:center;justify-content:center;color:var(--text-soft);font-size:12.5px}
+.icon-btn:hover{background:var(--surface-2);color:var(--text)}
+.table-foot{display:flex;align-items:center;justify-content:space-between;padding:14px 16px;border-top:1px solid var(--border);font-size:12.5px;color:var(--text-soft)}
+.pager{display:flex;gap:4px}
+.pager button{width:28px;height:28px;border-radius:7px;font-size:12px;color:var(--text-soft)}
+.pager button.active{background:var(--primary);color:#fff}
+.pager button:hover:not(.active){background:var(--surface-2)}
+.empty-state{padding:56px 24px;text-align:center;color:var(--text-soft)}
+.empty-state i{font-size:30px;color:var(--text-faint);margin-bottom:12px}
+.empty-state .t{font-weight:700;color:var(--text);margin-bottom:4px;font-family:var(--font-d)}
+
+/* ---------- qr / identity detail ---------- */
+.qr-box{background:#fff;padding:12px;border-radius:12px;display:inline-flex;border:1px solid var(--border)}
+.detail-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.section-label{font-size:11px;text-transform:uppercase;letter-spacing:.08em;color:var(--text-faint);font-weight:700;margin:18px 0 8px}
+.section-label:first-child{margin-top:0}
+.chain-item{display:flex;gap:12px;padding:12px 0;border-bottom:1px solid var(--border)}
+.chain-item:last-child{border:none}
+.chain-dot{width:8px;height:8px;border-radius:50%;background:var(--accent);margin-top:6px;flex-shrink:0}
+.chain-item .h{font-size:13px;font-weight:600}
+.chain-item .h .mono{color:var(--text-faint);font-size:11px}
+.chain-item .t{font-size:11.5px;color:var(--text-faint);margin-top:2px}
+
+.tabs{display:flex;gap:4px;background:var(--surface-2);padding:4px;border-radius:11px;margin-bottom:18px;width:fit-content}
+.tab{padding:8px 16px;border-radius:8px;font-size:12.5px;font-weight:600;color:var(--text-soft)}
+.tab.active{background:var(--surface);color:var(--text);box-shadow:var(--shadow-sm)}
+
+.switch{position:relative;width:42px;height:24px;background:var(--border);border-radius:20px;transition:.2s;flex-shrink:0}
+.switch::after{content:'';position:absolute;top:2px;left:2px;width:20px;height:20px;background:#fff;border-radius:50%;transition:.2s;box-shadow:0 1px 3px rgba(0,0,0,.3)}
+.switch.on{background:var(--primary)}
+.switch.on::after{left:20px}
+.setting-row{display:flex;align-items:center;justify-content:space-between;padding:14px 0;border-bottom:1px solid var(--border)}
+.setting-row:last-child{border:none}
+.setting-row .lbl{font-size:13.5px;font-weight:600}
+.setting-row .desc{font-size:12px;color:var(--text-soft);margin-top:2px}
+
+.fade-in{animation:fadein .3s ease}
+@keyframes fadein{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}
+
+/* Guru portal reuses every shared component, just re-pointed at the accent (teal)
+   as its primary — a scoped token override instead of duplicated CSS. */
+#guru-shell{--primary:var(--accent);--primary-dark:#0B8A79;--primary-soft:var(--accent-soft)}
+#guru-shell .sidebar-desktop .brand{gap:8px}
+
+@media (max-width:1023px){
+  #guru-shell .sidebar-desktop{display:none}
+  #guru-shell .topbar-desktop{display:none}
+  #guru-shell .mobile-topbar{display:flex}
+  #guru-shell .bottom-nav{display:flex}
+  #guru-shell .content{display:none}
+  #guru-shell .content-mobile{display:block !important}
+  .sidebar-desktop{display:none}
+  .topbar-desktop{display:none}
+  .mobile-topbar{display:flex}
+  .bottom-nav{display:flex}
+  .content{display:none}
+  .content-mobile{display:block !important}
+  .grid-stats{grid-template-columns:repeat(2,1fr)}
+  .grid-2,.grid-3{grid-template-columns:1fr}
+  .detail-grid{grid-template-columns:1fr}
+  .auth-side{display:none}
+  .auth-main{width:100%}
+}
+@media (min-width:1024px){
+  .content-mobile{display:none !important}
+}
+</style>
+</head>
+<body>
+
+<!-- ============================= LOADING ============================= -->
+<div id="screen-loading">
+  <div class="boot-logo"><i class="fa-solid fa-link"></i></div>
+  <div class="boot-text">EduChain</div>
+  <div class="boot-bar"><i></i></div>
+</div>
+
+<!-- ============================= SETUP WIZARD ============================= -->
+<div id="screen-setup" class="auth-wrap hidden">
+  <div class="auth-side">
+    <div class="brand"><span class="mark"><i class="fa-solid fa-link"></i></span>EduChain</div>
+    <div class="pitch">
+      <span class="eyebrow" style="color:#8FB3FF">Smart School Ecosystem</span>
+      <h1>Satu identitas terverifikasi untuk seluruh warga sekolah.</h1>
+      <p>Akun admin dibuat mandiri dan diamankan dengan frasa pemulihan 12 kata, mengikuti standar dompet blockchain — hanya Anda yang memegangnya.</p>
+      <div class="chain-strip">
+        <span><i class="fa-solid fa-shield-halved"></i> Non-custodial recovery</span>
+        <span><i class="fa-solid fa-qrcode"></i> QR identity</span>
+        <span><i class="fa-solid fa-cubes"></i> Ledger tercatat</span>
+      </div>
+    </div>
+    <div class="foot">© 2026 EduChain · Simulasi edukatif, bukan blockchain produksi</div>
+  </div>
+  <div class="auth-main">
+    <div class="auth-card">
+      <div class="step-dots"><i id="dot1" class="active"></i><i id="dot2"></i><i id="dot3"></i></div>
+
+      <!-- step 1 -->
+      <div id="setup-step-1">
+        <h2>Buat akun Admin</h2>
+        <div class="sub">Akun ini adalah root access satu-satunya untuk sistem EduChain sekolah Anda.</div>
+        <div class="field"><label>Nama Sekolah <span class="req">*</span></label>
+          <input class="input" id="su-school" placeholder="cth. SMA Nusantara Digital"></div>
+        <div class="field"><label>Nama Admin <span class="req">*</span></label>
+          <input class="input" id="su-name" placeholder="Nama lengkap"></div>
+        <div class="field"><label>Email <span class="req">*</span></label>
+          <input class="input" id="su-email" type="email" placeholder="admin@sekolah.sch.id">
+          <div class="field-error">Format email tidak valid</div></div>
+        <div class="field"><label>Password <span class="req">*</span></label>
+          <div class="input-group"><input class="input" id="su-pass" type="password" placeholder="Minimal 8 karakter">
+          <i class="fa-regular fa-eye toggle-eye" data-target="su-pass"></i></div>
+          <div class="pw-strength"><i></i><i></i><i></i><i></i></div></div>
+        <div class="field"><label>Konfirmasi Password <span class="req">*</span></label>
+          <input class="input" id="su-pass2" type="password" placeholder="Ulangi password">
+          <div class="field-error">Password tidak cocok</div></div>
+        <button class="btn btn-primary btn-block" onclick="Setup.toStep2()">Buat Wallet & Lanjutkan <i class="fa-solid fa-arrow-right"></i></button>
+        <div style="text-align:center;margin-top:16px;font-size:12.5px;color:var(--text-soft)">Sudah punya akun? <a class="link-btn" onclick="Setup.gotoLogin()">Masuk</a></div>
+      </div>
+
+      <!-- step 2: reveal seed -->
+      <div id="setup-step-2" class="hidden">
+        <h2>Frasa Pemulihan Anda</h2>
+        <div class="sub">12 kata ini adalah satu-satunya cara memulihkan akun jika lupa password. Simpan secara offline.</div>
+        <div class="seed-warning"><i class="fa-solid fa-triangle-exclamation"></i> Jangan pernah bagikan frasa ini ke siapa pun, termasuk pihak yang mengaku dari EduChain.</div>
+        <div class="seed-panel">
+          <div class="seed-grid" id="seedGrid"></div>
+          <div class="seed-reveal-overlay" id="seedOverlay">
+            <button class="btn btn-accent btn-sm" onclick="Setup.revealSeed()"><i class="fa-solid fa-eye"></i> Tampilkan Frasa</button>
+          </div>
+        </div>
+        <button class="btn btn-ghost btn-sm" id="seedCopyBtn" style="margin-bottom:16px" disabled onclick="copySeedPhrase(this)"><i class="fa-solid fa-copy"></i> Salin Frasa</button>
+        <label style="display:flex;gap:9px;align-items:flex-start;font-size:12.5px;color:var(--text-soft);margin-bottom:18px;cursor:pointer">
+          <input type="checkbox" id="su-confirm-saved" style="margin-top:3px"> Saya telah menyalin dan menyimpan 12 kata ini dengan aman.
+        </label>
+        <button class="btn btn-primary btn-block" onclick="Setup.toStep3()">Lanjutkan Verifikasi <i class="fa-solid fa-arrow-right"></i></button>
+        <button class="btn btn-ghost btn-block" style="margin-top:10px" onclick="Setup.backTo1()">Kembali</button>
+      </div>
+
+      <!-- step 3: confirm seed -->
+      <div id="setup-step-3" class="hidden">
+        <h2>Verifikasi Frasa</h2>
+        <div class="sub">Pilih kata yang tepat untuk memastikan Anda telah menyimpannya dengan benar.</div>
+        <div class="seed-confirm-grid" id="seedConfirmGrid"></div>
+        <button class="btn btn-primary btn-block" id="su-finish-btn" onclick="Setup.finish()" disabled>Selesai & Masuk Dashboard <i class="fa-solid fa-check"></i></button>
+        <button class="btn btn-ghost btn-block" style="margin-top:10px" onclick="Setup.backTo2()">Kembali</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================= LOGIN ============================= -->
+<div id="screen-login" class="auth-wrap hidden">
+  <div class="auth-side">
+    <div class="brand"><span class="mark"><i class="fa-solid fa-link"></i></span>EduChain</div>
+    <div class="pitch">
+      <span class="eyebrow" style="color:#8FB3FF">Smart School Ecosystem</span>
+      <h1>Satu ekosistem, tiga portal.</h1>
+      <p>Guru dan siswa masuk dengan akun yang dibuatkan Admin. Pembuatan akun Admin baru dibatasi dengan kode setup.</p>
+    </div>
+    <div class="foot">© 2026 EduChain · Simulasi edukatif, bukan blockchain produksi</div>
+  </div>
+  <div class="auth-main">
+    <div class="auth-card">
+      <div class="tabs" id="portalTabs" style="margin-bottom:22px">
+        <div class="tab" data-portal="admin" onclick="PortalUI.switch('admin')"><i class="fa-solid fa-user-shield"></i> Admin</div>
+        <div class="tab active" data-portal="guru" onclick="PortalUI.switch('guru')"><i class="fa-solid fa-chalkboard-user"></i> Guru</div>
+        <div class="tab" data-portal="siswa" onclick="PortalUI.switch('siswa')"><i class="fa-solid fa-user-graduate"></i> Siswa</div>
+      </div>
+
+      <div id="adminLoginWrap" class="hidden">
+        <div id="adminSetupLocked">
+          <h2>Portal Admin</h2>
+          <div class="sub">Belum ada akun Admin di perangkat ini, atau Anda ingin membuat yang baru.</div>
+          <div class="seed-warning"><i class="fa-solid fa-lock"></i> Pembuatan akun Admin dibatasi kode setup agar tidak sembarang orang bisa membuatnya saat aplikasi diakses publik.</div>
+          <button class="btn btn-primary btn-block" onclick="openAdminSetupGate()"><i class="fa-solid fa-key"></i> Masukkan Kode Setup</button>
+        </div>
+        <div id="adminLoginActive" class="hidden">
+          <div id="login-form">
+            <h2>Masuk Admin</h2>
+            <div class="sub">Masukkan kredensial akun Anda.</div>
+            <div class="field"><label>Email</label><input class="input" id="li-email" type="email" placeholder="admin@sekolah.sch.id"></div>
+            <div class="field"><label>Password</label>
+              <div class="input-group"><input class="input" id="li-pass" type="password" placeholder="Password">
+              <i class="fa-regular fa-eye toggle-eye" data-target="li-pass"></i></div>
+              <div class="field-error" id="li-error">Email atau password salah</div></div>
+            <button class="btn btn-primary btn-block" onclick="Auth.tryLogin()">Masuk <i class="fa-solid fa-arrow-right"></i></button>
+            <div style="text-align:center;margin-top:16px"><a class="link-btn" onclick="Recovery.open()">Lupa password? Gunakan frasa pemulihan</a></div>
+          </div>
+          <div id="recovery-form" class="hidden">
+            <h2>Pemulihan Akun</h2>
+            <div class="sub">Masukkan 12 kata frasa pemulihan Anda, dipisah spasi, sesuai urutan.</div>
+            <div class="field"><label>Frasa Pemulihan</label><textarea class="textarea" id="rec-phrase" rows="3" placeholder="kata1 kata2 kata3 ..."></textarea>
+              <div class="field-error" id="rec-error">Frasa tidak cocok</div></div>
+            <div class="field"><label>Password Baru</label><input class="input" id="rec-newpass" type="password" placeholder="Minimal 8 karakter"></div>
+            <button class="btn btn-primary btn-block" onclick="Recovery.submit()">Pulihkan Akun</button>
+            <div style="text-align:center;margin-top:16px"><a class="link-btn" onclick="Recovery.close()">Kembali ke login</a></div>
+          </div>
+        </div>
+      </div>
+
+      <div id="guruLoginWrap">
+        <div id="guru-login-form">
+          <h2>Masuk Guru</h2>
+          <div class="sub">Masukkan 12 kata frasa identitas yang diberikan oleh Admin sekolah, dipisah spasi sesuai urutan.</div>
+          <div class="field"><label>Frasa Identitas (12 kata)</label>
+            <textarea class="textarea" id="gli-phrase" rows="3" placeholder="kata1 kata2 kata3 ..."></textarea>
+            <div class="field-error" id="gli-error">Frasa tidak dikenali, atau akun belum dibuatkan Admin</div></div>
+          <button class="btn btn-accent btn-block" onclick="GuruAuth.tryLogin()">Masuk sebagai Guru <i class="fa-solid fa-arrow-right"></i></button>
+          <div style="text-align:center;margin-top:16px;font-size:12.5px;color:var(--text-soft)">Akun & frasa dibuat oleh Admin. Lupa frasa? Hubungi Admin sekolah untuk dibuatkan identitas baru.</div>
+        </div>
+      </div>
+
+      <div id="siswaLoginWrap" class="hidden" style="text-align:center;padding:10px 0">
+        <i class="fa-solid fa-user-graduate" style="font-size:30px;color:var(--primary);margin-bottom:14px"></i>
+        <h2>Portal Siswa</h2>
+        <div class="sub">Portal siswa berada di halaman terpisah (siswa.html) agar lebih ringan dan fokus untuk siswa.</div>
+        <a class="btn btn-primary btn-block" href="siswa.html"><i class="fa-solid fa-arrow-up-right-from-square"></i> Buka Portal Siswa</a>
+        <div class="field-hint" style="margin-top:12px">Data yang dibuat Admin di perangkat ini otomatis tersedia di Portal Siswa selama dibuka di browser yang sama.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ============================= APP SHELL ============================= -->
+<div id="app-shell" class="hidden">
+  <!-- Desktop sidebar (persistent, own component) -->
+  <aside class="sidebar-desktop">
+    <div class="brand"><span class="mark"><i class="fa-solid fa-link"></i></span>EduChain</div>
+    <div class="nav-scroll">
+      <div class="nav-group-label">Umum</div>
+      <div class="nav-item" data-page="dashboard"><i class="fa-solid fa-house"></i>Dashboard</div>
+      <div class="nav-group-label">Data Akademik</div>
+      <div class="nav-item" data-page="siswa"><i class="fa-solid fa-user-graduate"></i>Data Siswa<span class="badge-count" id="navCountSiswa">0</span></div>
+      <div class="nav-item" data-page="guru"><i class="fa-solid fa-chalkboard-user"></i>Data Guru<span class="badge-count" id="navCountGuru">0</span></div>
+      <div class="nav-item" data-page="kelas"><i class="fa-solid fa-school"></i>Data Kelas</div>
+      <div class="nav-item" data-page="jadwal"><i class="fa-solid fa-calendar-days"></i>Jadwal Pelajaran</div>
+      <div class="nav-group-label">Aset</div>
+      <div class="nav-item" data-page="inventaris"><i class="fa-solid fa-laptop"></i>Inventaris</div>
+      <div class="nav-item" data-page="perpustakaan"><i class="fa-solid fa-book"></i>Perpustakaan</div>
+      <div class="nav-group-label">Sistem</div>
+      <div class="nav-item" data-page="scan"><i class="fa-solid fa-qrcode"></i>Scan Absensi/Pinjam</div>
+      <div class="nav-item" data-page="blockchain"><i class="fa-solid fa-cubes"></i>Blockchain</div>
+      <div class="nav-item" data-page="laporan"><i class="fa-solid fa-chart-pie"></i>Laporan</div>
+      <div class="nav-item" data-page="pengaturan"><i class="fa-solid fa-gear"></i>Pengaturan</div>
+    </div>
+    <div class="sidebar-foot">
+      <div class="nav-item" onclick="Auth.logout()" style="color:#F0A0A0"><i class="fa-solid fa-arrow-right-from-bracket"></i>Logout</div>
+    </div>
+  </aside>
+
+  <div class="main-col">
+    <!-- Desktop topbar (own component, richer than mobile) -->
+    <header class="topbar-desktop">
+      <div class="page-title" id="pageTitleDesktop">Dashboard</div>
+      <div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input placeholder="Cari siswa, guru, aset..." id="globalSearch"></div>
+      <div class="topbar-right">
+        <div class="clock-box"><b id="clockTime">--:--</b><span id="clockDate">-</span></div>
+        <div class="bell-wrap"><button class="bell-btn"><i class="fa-regular fa-bell"></i><span class="bell-dot"></span></button></div>
+        <div class="avatar-chip" onclick="Router.go('pengaturan')">
+          <div class="avatar-circle" id="topAvatarInit">A</div>
+          <div class="who"><b id="topAdminName">Admin</b><span id="topAdminSchool">Sekolah</span></div>
+        </div>
+      </div>
+    </header>
+
+    <!-- Mobile topbar (own, simplified — different IA than desktop) -->
+    <header class="mobile-topbar">
+      <button class="icon-btn" onclick="MobileMenu.open()"><i class="fa-solid fa-bars"></i></button>
+      <div class="page-title" id="pageTitleMobile">Dashboard</div>
+      <div style="margin-left:auto;display:flex;gap:10px;align-items:center">
+        <div class="bell-wrap"><button class="bell-btn" style="width:34px;height:34px"><i class="fa-regular fa-bell"></i><span class="bell-dot"></span></button></div>
+        <div class="avatar-circle" id="mobAvatarInit" onclick="Router.go('pengaturan')">A</div>
+      </div>
+    </header>
+
+    <main class="content" id="pageContent"></main>
+    <main class="content content-mobile content-mobile-pad" id="pageContentMobile"></main>
+  </div>
+
+  <!-- Bottom nav — mobile-only navigation pattern (distinct from desktop sidebar). Nested in
+       #app-shell so it hides automatically with the shell instead of leaking onto auth screens. -->
+  <nav class="bottom-nav">
+    <div class="bn-item" data-bn="dashboard"><i class="fa-solid fa-house"></i>Beranda</div>
+    <div class="bn-item" data-bn="siswa"><i class="fa-solid fa-user-graduate"></i>Siswa</div>
+    <div class="bn-item" data-bn="guru"><i class="fa-solid fa-chalkboard-user"></i>Guru</div>
+    <div class="bn-item" data-bn="blockchain"><i class="fa-solid fa-cubes"></i>Ledger</div>
+    <div class="bn-item" onclick="MobileMenu.open()"><i class="fa-solid fa-ellipsis"></i>Menu</div>
+  </nav>
+
+  <div class="sheet-backdrop" id="sheetBackdrop" onclick="MobileMenu.close()"></div>
+  <div class="sheet" id="mobileSheet">
+    <div class="sheet-handle"></div>
+    <div class="nav-item" data-page="kelas" onclick="Router.go('kelas');MobileMenu.close()"><i class="fa-solid fa-school"></i>Data Kelas</div>
+    <div class="nav-item" data-page="jadwal" onclick="Router.go('jadwal');MobileMenu.close()"><i class="fa-solid fa-calendar-days"></i>Jadwal Pelajaran</div>
+    <div class="nav-item" data-page="inventaris" onclick="Router.go('inventaris');MobileMenu.close()"><i class="fa-solid fa-laptop"></i>Inventaris</div>
+    <div class="nav-item" data-page="perpustakaan" onclick="Router.go('perpustakaan');MobileMenu.close()"><i class="fa-solid fa-book"></i>Perpustakaan</div>
+    <div class="nav-item" data-page="scan" onclick="Router.go('scan');MobileMenu.close()"><i class="fa-solid fa-qrcode"></i>Scan Absensi/Pinjam</div>
+    <div class="nav-item" data-page="laporan" onclick="Router.go('laporan');MobileMenu.close()"><i class="fa-solid fa-chart-pie"></i>Laporan</div>
+    <div class="nav-item" data-page="pengaturan" onclick="Router.go('pengaturan');MobileMenu.close()"><i class="fa-solid fa-gear"></i>Pengaturan</div>
+    <div class="nav-item" style="color:var(--danger)" onclick="Auth.logout()"><i class="fa-solid fa-arrow-right-from-bracket"></i>Logout</div>
+  </div>
+</div>
+
+<!-- ============================= GURU PORTAL SHELL (separate, teal-accented) ============================= -->
+<div id="guru-shell" class="hidden">
+  <aside class="sidebar-desktop">
+    <div class="brand"><span class="mark"><i class="fa-solid fa-link"></i></span>EduChain
+      <span class="badge badge-info" style="margin-left:auto;font-size:9.5px">GURU</span></div>
+    <div class="nav-scroll">
+      <div class="nav-group-label">Portal Guru</div>
+      <div class="nav-item active" data-gpage="dashboard"><i class="fa-solid fa-house"></i>Dashboard</div>
+      <div class="nav-item" data-gpage="kelas"><i class="fa-solid fa-school"></i>Kelas Saya</div>
+      <div class="nav-item" data-gpage="jadwal"><i class="fa-solid fa-calendar-days"></i>Jadwal Mengajar</div>
+      <div class="nav-item" data-gpage="scan"><i class="fa-solid fa-qrcode"></i>Scan Absensi/Pinjam</div>
+      <div class="nav-item" data-gpage="profil"><i class="fa-solid fa-id-card"></i>Profil Saya</div>
+    </div>
+    <div class="sidebar-foot">
+      <div class="nav-item" onclick="GuruApp.logout()" style="color:#F0A0A0"><i class="fa-solid fa-arrow-right-from-bracket"></i>Keluar</div>
+    </div>
+  </aside>
+
+  <div class="main-col">
+    <header class="topbar-desktop">
+      <div class="page-title" id="gPageTitleDesktop">Dashboard</div>
+      <div style="flex:1"></div>
+      <div class="topbar-right">
+        <div class="clock-box"><b id="gClockTime">--:--</b><span id="gClockDate">-</span></div>
+        <div class="avatar-chip" onclick="GuruRouter.go('profil')">
+          <div class="avatar-circle" id="gTopAvatar">G</div>
+          <div class="who"><b id="gTopName">Guru</b><span id="gTopMapel">-</span></div>
+        </div>
+      </div>
+    </header>
+    <header class="mobile-topbar">
+      <div class="page-title" id="gPageTitleMobile">Dashboard</div>
+      <div style="margin-left:auto;display:flex;gap:10px;align-items:center">
+        <div class="avatar-circle" id="gMobAvatar" onclick="GuruRouter.go('profil')">G</div>
+      </div>
+    </header>
+    <main class="content" id="gPageContent"></main>
+    <main class="content content-mobile content-mobile-pad" id="gPageContentMobile"></main>
+  </div>
+
+  <nav class="bottom-nav">
+    <div class="bn-item" data-gbn="dashboard"><i class="fa-solid fa-house"></i>Beranda</div>
+    <div class="bn-item" data-gbn="kelas"><i class="fa-solid fa-school"></i>Kelas</div>
+    <div class="bn-item" data-gbn="jadwal"><i class="fa-solid fa-calendar-days"></i>Jadwal</div>
+    <div class="bn-item" data-gbn="scan"><i class="fa-solid fa-qrcode"></i>Scan</div>
+    <div class="bn-item" data-gbn="profil"><i class="fa-solid fa-id-card"></i>Profil</div>
+  </nav>
+</div>
+
+<div id="toast-container"></div>
+<div id="modal-root"></div>
+
+<!-- ======================================================================
+     JAVASCRIPT
+====================================================================== -->
+<script>
+/* ===================== UTILITIES ===================== */
+const $ = (s,c=document)=>c.querySelector(s);
+const $$ = (s,c=document)=>Array.from(c.querySelectorAll(s));
+function uid(prefix){return prefix+'-'+Date.now().toString(36)+Math.random().toString(36).slice(2,7)}
+function randHex(len){let s='';const chars='0123456789abcdef';for(let i=0;i<len;i++)s+=chars[Math.floor(Math.random()*16)];return s}
+
+/* ---- REAL crypto identity (BIP-39 mnemonic + secp256k1 keypair) via ethers.js ----
+   Falls back to a locally-generated placeholder ONLY if the CDN library failed to
+   load (e.g. no internet on first open) so the app never hard-crashes; the fallback
+   is clearly non-cryptographic and only meant to keep the UI from breaking. */
+const CRYPTO_READY = typeof ethers !== 'undefined';
+function genRealWallet(){
+  if(CRYPTO_READY){
+    const w = ethers.Wallet.createRandom();
+    return {
+      address: w.address,
+      privateKey: w.privateKey,
+      publicKey: (w.signingKey && w.signingKey.publicKey) || '',
+      mnemonic: w.mnemonic.phrase.split(' '),
+      real:true
+    };
+  }
+  // offline fallback — NOT real cryptography, just keeps the demo usable
+  const fallbackWords=['abadi','akar','alur','angin','bumi','bunga','cahaya','catur','dahan','damai','elang','embun'];
+  return {address:'0x'+randHex(40),privateKey:'0x'+randHex(64),publicKey:'0x'+randHex(66),mnemonic:fallbackWords.slice(),real:false};
+}
+function realHash(input){
+  if(CRYPTO_READY){ try{ return ethers.keccak256(ethers.toUtf8Bytes(String(input))); }catch(e){} }
+  let h=0; const str=String(input)+Date.now()+Math.random();
+  for(let i=0;i<str.length;i++){h=(h<<5)-h+str.charCodeAt(i);h|=0}
+  let hex=Math.abs(h).toString(16);
+  while(hex.length<64) hex+=randHex(8);
+  return '0x'+hex.slice(0,64);
+}
+
+function debounce(fn,ms){let t;return(...a)=>{clearTimeout(t);t=setTimeout(()=>fn(...a),ms)}}
+function isMobileViewport(){return window.matchMedia('(max-width:1023px)').matches}
+
+/* ---- Copy-to-clipboard helper, reused by every seed-phrase display in the app.
+   Tries the modern Clipboard API first (needs https/localhost); falls back to the
+   older execCommand technique so it still works when the file is opened locally. */
+function copyTextToClipboard(text,btn){
+  const onDone=()=>{
+    toast('Frasa disalin ke clipboard','success');
+    if(btn){
+      const original=btn.innerHTML;
+      btn.innerHTML='<i class="fa-solid fa-check"></i> Tersalin';
+      btn.disabled=true;
+      setTimeout(()=>{btn.innerHTML=original;btn.disabled=false;},1500);
+    }
+  };
+  const onFail=()=>toast('Gagal menyalin otomatis — salin manual dari daftar kata di atas','error');
+  if(navigator.clipboard && window.isSecureContext){
+    navigator.clipboard.writeText(text).then(onDone).catch(()=>legacyCopy(text,onDone,onFail));
+  } else {
+    legacyCopy(text,onDone,onFail);
+  }
+}
+function legacyCopy(text,onDone,onFail){
+  try{
+    const ta=document.createElement('textarea');
+    ta.value=text;
+    ta.style.position='fixed';ta.style.left='-9999px';ta.style.top='0';
+    document.body.appendChild(ta);
+    ta.focus();ta.select();
+    const ok=document.execCommand('copy');
+    document.body.removeChild(ta);
+    ok?onDone():onFail();
+  }catch(e){onFail();}
+}
+function copySeedPhrase(btn){
+  const phrase=btn.dataset.phrase||'';
+  if(!phrase){toast('Frasa tidak ditemukan','error');return;}
+  copyTextToClipboard(phrase,btn);
+}
+/* Builds a seed-grid panel with its own copy button attached, so every reveal
+   spot in the app renders identically instead of duplicating markup. */
+function seedRevealBlockHtml(words){
+  const phraseAttr=escapeHtml(words.join(' '));
+  return `<div class="seed-panel"><div class="seed-grid revealed">${words.map((w,i)=>`<div class="seed-word"><b>${i+1}</b>${escapeHtml(w)}</div>`).join('')}</div></div>
+    <button class="btn btn-ghost btn-sm" style="margin-top:10px" onclick="copySeedPhrase(this)" data-phrase="${phraseAttr}"><i class="fa-solid fa-copy"></i> Salin Frasa</button>`;
+}
+function fmtDate(iso){if(!iso)return '-';const d=new Date(iso);return d.toLocaleDateString('id-ID',{day:'2-digit',month:'short',year:'numeric'})}
+function fmtDateTime(iso){if(!iso)return '-';const d=new Date(iso);return d.toLocaleString('id-ID',{day:'2-digit',month:'short',year:'numeric',hour:'2-digit',minute:'2-digit'})}
+function initials(name){if(!name)return '?';return name.trim().split(/\s+/).slice(0,2).map(w=>w[0]).join('').toUpperCase()}
+function escapeHtml(str){if(str==null)return '';return String(str).replace(/[&<>"']/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]))}
+
+const ADMIN_SETUP_KEY = "EDUCHAIN28"; // change this line any time to rotate the setup passcode
+
+function toast(msg,type='info'){
+  const icons={success:'fa-circle-check',error:'fa-circle-exclamation',info:'fa-circle-info'};
+  const el=document.createElement('div');
+  el.className='toast '+type;
+  el.innerHTML=`<i class="fa-solid ${icons[type]}"></i><div>${escapeHtml(msg)}</div>`;
+  $('#toast-container').appendChild(el);
+  setTimeout(()=>{el.style.opacity='0';el.style.transform='translateX(30px)';el.style.transition='.25s';setTimeout(()=>el.remove(),260)},3200);
+}
+
+document.addEventListener('click',e=>{
+  const btn=e.target.closest('.btn');
+  if(btn){
+    const r=document.createElement('span');
+    r.className='ripple';
+    const rect=btn.getBoundingClientRect();
+    r.style.left=(e.clientX-rect.left)+'px';r.style.top=(e.clientY-rect.top)+'px';
+    btn.appendChild(r);setTimeout(()=>r.remove(),600);
+  }
+  const eye=e.target.closest('.toggle-eye');
+  if(eye){const t=$('#'+eye.dataset.target);if(t){t.type=t.type==='password'?'text':'password';eye.classList.toggle('fa-eye');eye.classList.toggle('fa-eye-slash')}}
+});
+
+/* ===================== STORAGE ===================== */
+const DB={
+  get(key,fallback){try{const v=localStorage.getItem('educhain_'+key);return v?JSON.parse(v):fallback}catch(e){return fallback}},
+  set(key,val){localStorage.setItem('educhain_'+key,JSON.stringify(val))},
+  remove(key){localStorage.removeItem('educhain_'+key)}
+};
+
+/* ===================== CHAIN (simulated ledger) ===================== */
+const Chain={
+  add(action,refType,refLabel,walletOverride){
+    const chain=DB.get('chain',[]);
+    const prevHash=chain.length?chain[chain.length-1].hash:'0x'+'0'.repeat(64);
+    const block={
+      number:chain.length+1,
+      wallet:walletOverride||(DB.get('admin',{}).wallet)||'0x'+'0'.repeat(40),
+      action, refType, refLabel,
+      timestamp:new Date().toISOString(),
+      prevHash, hash:realHash(prevHash+action+refLabel+Date.now()+Math.random()),
+      status:'Confirmed'
+    };
+    chain.push(block);
+    DB.set('chain',chain);
+    return block;
+  },
+  all(){return DB.get('chain',[]).slice().reverse()}
+};
+
+/* ===================== AUTH / SETUP ===================== */
+const Auth={
+  hasAdmin(){return !!DB.get('admin',null)},
+  getAdmin(){return DB.get('admin',null)},
+  session:false,
+  tryLogin(){
+    const email=$('#li-email').value.trim();
+    const pass=$('#li-pass').value;
+    const admin=Auth.getAdmin();
+    $('#li-error').style.display='none';$('#li-email').closest('.field')?.classList.remove('invalid');
+    if(!admin || admin.email.toLowerCase()!==email.toLowerCase() || admin.password!==pass){
+      $('#li-pass').closest('.field').classList.add('invalid');
+      toast('Email atau password salah','error');
+      return;
+    }
+    Auth.session=true;
+    DB.set('session',{loggedIn:true,role:'admin',at:new Date().toISOString()});
+    App.boot();
+  },
+  logout(){
+    Auth.session=false;
+    DB.set('session',{loggedIn:false});
+    MobileMenu.close();
+    location.reload();
+  }
+};
+
+const PortalUI={
+  switch(mode){
+    $$('#portalTabs .tab').forEach(t=>t.classList.toggle('active',t.dataset.portal===mode));
+    $('#adminLoginWrap').classList.toggle('hidden',mode!=='admin');
+    $('#guruLoginWrap').classList.toggle('hidden',mode!=='guru');
+    $('#siswaLoginWrap').classList.toggle('hidden',mode!=='siswa');
+    if(mode==='admin')PortalUI.refreshAdminTab();
+  },
+  refreshAdminTab(){
+    const locked=!Auth.hasAdmin();
+    $('#adminSetupLocked').classList.toggle('hidden',!locked);
+    $('#adminLoginActive').classList.toggle('hidden',locked);
+  },
+  verifySetupKey(){
+    const val=$('#setupKeyInput').value;
+    if(val!==ADMIN_SETUP_KEY){
+      $('#setupKeyError').style.display='block';
+      toast('Kode setup salah','error');
+      return;
+    }
+    closeModal();
+    $('#screen-login').classList.add('hidden');
+    $('#screen-setup').classList.remove('hidden');
+  }
+};
+function openAdminSetupGate(){
+  openModalHtml(`
+    <div class="modal-head"><h3>Akses Admin</h3><button class="icon-btn" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button></div>
+    <div class="modal-body">
+      <p style="font-size:13px;color:var(--text-soft);margin-bottom:14px">Masukkan kode setup untuk membuat akun Admin pertama kali. Kode ini ditentukan oleh pengelola sistem.</p>
+      <div class="field"><label>Kode Setup</label><input class="input" id="setupKeyInput" type="password" placeholder="Kode rahasia" onkeydown="if(event.key==='Enter')PortalUI.verifySetupKey()"></div>
+      <div class="field-error" id="setupKeyError" style="display:none">Kode salah, coba lagi.</div>
+    </div>
+    <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Batal</button>
+    <button class="btn btn-primary" onclick="PortalUI.verifySetupKey()">Lanjutkan</button></div>
+  `);
+}
+
+/* ===================== GURU PORTAL (separate login, restricted view) ===================== */
+const GuruAuth={
+  tryLogin(){
+    const phraseRaw=$('#gli-phrase').value.trim().toLowerCase();
+    const words=phraseRaw.split(/\s+/).filter(Boolean);
+    const errEl=$('#gli-error');
+    errEl.style.display='none';
+    if(words.length!==12){errEl.textContent='Frasa harus terdiri dari 12 kata';errEl.style.display='block';return;}
+    const phrase=words.join(' ');
+    const rec=Modules.guru.all().find(g=>(g.seedPhrase||'').toLowerCase()===phrase);
+    if(!rec){errEl.textContent='Frasa tidak dikenali, atau akun belum dibuatkan Admin';errEl.style.display='block';toast('Login guru gagal','error');return;}
+    DB.set('session',{loggedIn:true,role:'guru',guruId:rec.id,at:new Date().toISOString()});
+    GuruApp.boot(rec.id);
+  },
+  saveProfil(){
+    const g=Modules.guru.get(GuruApp.currentId);
+    Modules.guru.update(g.id,{nama:$('#gp-nama').value.trim(),hp:$('#gp-hp').value.trim(),email:$('#gp-email').value.trim()});
+    toast('Profil diperbarui','success');
+    GuruApp.applyIdentity();
+    GuruRouter.render();
+  },
+  toggleSeed(btn){
+    const g=Modules.guru.get(GuruApp.currentId);
+    const box=$('#gpSeedBox');
+    if(box.classList.contains('hidden')){
+      const words=(g.seedPhrase||'').split(' ');
+      box.innerHTML=seedRevealBlockHtml(words);
+      box.classList.remove('hidden');
+      btn.innerHTML='<i class="fa-solid fa-eye-slash"></i> Sembunyikan Frasa';
+    } else {
+      box.classList.add('hidden');
+      btn.innerHTML='<i class="fa-solid fa-eye"></i> Tampilkan Frasa Saya';
+    }
+  }
+};
+
+const GuruApp={
+  currentId:null,
+  boot(id){
+    if(!Modules.guru.get(id)){toast('Akun guru tidak ditemukan, mungkin telah dihapus Admin','error');GuruApp.logout();return;}
+    this.currentId=id;
+    $('#screen-setup').classList.add('hidden');
+    $('#screen-login').classList.add('hidden');
+    $('#app-shell').classList.add('hidden');
+    $('#guru-shell').classList.remove('hidden');
+    GuruApp.applyIdentity();
+    GuruRouter.go('dashboard');
+  },
+  applyIdentity(){
+    const g=Modules.guru.get(this.currentId); if(!g)return;
+    $('#gTopName').textContent=g.nama;
+    $('#gTopMapel').textContent=g.mapel||'-';
+    $('#gTopAvatar').textContent=initials(g.nama);
+    $('#gMobAvatar').textContent=initials(g.nama);
+  },
+  logout(){
+    DB.set('session',{loggedIn:false});
+    location.reload();
+  }
+};
+
+const GuruRouter={
+  current:'dashboard',
+  go(page){
+    if(this.current==='scan' && page!=='scan' && typeof ScanUI!=='undefined') ScanUI.stop();
+    this.current=page;
+    this.render();
+    $$('#guru-shell .nav-item[data-gpage]').forEach(n=>n.classList.toggle('active',n.dataset.gpage===page));
+    $$('#guru-shell .bn-item[data-gbn]').forEach(n=>n.classList.toggle('active',n.dataset.gbn===page));
+    const titles={dashboard:'Dashboard',kelas:'Kelas Saya',jadwal:'Jadwal Mengajar',scan:'Scan Absensi/Pinjam',profil:'Profil Saya'};
+    $('#gPageTitleDesktop').textContent=titles[page];
+    $('#gPageTitleMobile').textContent=titles[page];
+    window.scrollTo({top:0,behavior:'smooth'});
+  },
+  render(){
+    const html=GuruPages[this.current]?GuruPages[this.current]():'';
+    if(isMobileViewport()){ $('#gPageContent').innerHTML=''; $('#gPageContentMobile').innerHTML=html; }
+    else { $('#gPageContentMobile').innerHTML=''; $('#gPageContent').innerHTML=html; }
+    if(this.current==='dashboard')setTimeout(renderGuruQR,30);
+  }
+};
+$$('#guru-shell .nav-item[data-gpage]').forEach(n=>n.addEventListener('click',()=>GuruRouter.go(n.dataset.gpage)));
+$$('#guru-shell .bn-item[data-gbn]').forEach(n=>n.addEventListener('click',()=>GuruRouter.go(n.dataset.gbn)));
+
+function renderGuruQR(){
+  const boxes=$$('#gQrTarget'); if(!boxes.length||!window.QRCode)return;
+  const g=Modules.guru.get(GuruApp.currentId); if(!g)return;
+  boxes.forEach(box=>{
+    box.innerHTML='';
+    new QRCode(box,{text:JSON.stringify({id:g.id,wallet:g.wallet,type:'guru'}),width:130,height:130,colorDark:'#0A0F1E'});
+  });
+}
+
+const GuruPages={
+  dashboard(){
+    const g=Modules.guru.get(GuruApp.currentId);
+    const myClasses=Modules.kelas.all().filter(k=>k.waliKelas===g.id);
+    const todayName=['Minggu','Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'][new Date().getDay()];
+    const todaySchedule=Modules.jadwal.all().filter(j=>j.guru===g.id && j.hari===todayName).sort((a,b)=>a.jamMulai.localeCompare(b.jamMulai));
+    return `<div class="fade-in">
+      <div class="grid grid-2" style="margin-bottom:16px">
+        <div class="ledger-card">
+          <div class="ledger-head"><div class="ledger-avatar">${initials(g.nama)}</div>
+            <div class="meta"><small>Identitas Terverifikasi</small><div>${escapeHtml(g.nama)}</div></div></div>
+          <div class="ledger-perf"></div><div class="ledger-dash"></div>
+          <div class="ledger-body">
+            <div class="ledger-row"><span class="k">NIP</span><span class="v">${escapeHtml(g.nip)}</span></div>
+            <div class="ledger-row"><span class="k">Mata Pelajaran</span><span class="v">${escapeHtml(g.mapel)}</span></div>
+            <div class="ledger-row"><span class="k">Status Mengajar</span><span class="v">${escapeHtml(g.statusMengajar)}</span></div>
+            <div class="ledger-row"><span class="k">Wallet</span><span class="v">${g.wallet.slice(0,10)}…${g.wallet.slice(-6)}</span></div>
+            <div class="ledger-row"><span class="k">Terdaftar</span><span class="v">${fmtDateTime(g.createdAt)}</span></div>
+          </div>
+        </div>
+        <div class="card" style="display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px">
+          <div class="card-title" style="align-self:flex-start">QR Identitas</div>
+          <div class="qr-box" id="gQrTarget"></div>
+          <div style="font-size:11.5px;color:var(--text-faint);text-align:center">Tunjukkan QR ini untuk verifikasi kehadiran / peminjaman</div>
+        </div>
+      </div>
+      <div class="grid grid-2">
+        <div class="card">
+          <div class="card-title">Jadwal Mengajar Hari Ini (${todayName})</div>
+          ${todaySchedule.length?todaySchedule.map(j=>{const k=Modules.kelas.get(j.kelas);return `<div class="chain-item"><div class="chain-dot"></div>
+            <div style="flex:1"><div class="h">${escapeHtml(j.mapel)} · ${escapeHtml(k?k.nama:'-')}</div><div class="t">${escapeHtml(j.jamMulai)} - ${escapeHtml(j.jamSelesai)}</div></div></div>`}).join(''):
+            `<div class="empty-state"><i class="fa-solid fa-calendar-days"></i><div class="t">Tidak ada jadwal hari ini</div></div>`}
+        </div>
+        <div class="card">
+          <div class="card-title">Kelas Perwalian Saya</div>
+          ${myClasses.length?myClasses.map(k=>`<div class="chain-item"><div class="chain-dot"></div>
+            <div style="flex:1"><div class="h">${escapeHtml(k.nama)}</div><div class="t">Tingkat ${escapeHtml(k.tingkat)} · Kapasitas ${escapeHtml(k.kapasitas)} siswa</div></div></div>`).join(''):
+            `<div class="empty-state"><i class="fa-solid fa-school"></i><div class="t">Belum menjadi wali kelas</div><div>Data wali kelas diatur oleh Admin di menu Data Kelas.</div></div>`}
+        </div>
+      </div>
+    </div>`;
+  },
+  kelas(){
+    const g=Modules.guru.get(GuruApp.currentId);
+    const list=Modules.kelas.all();
+    return `<div class="fade-in"><div class="table-wrap"><div style="overflow-x:auto">
+      <table><thead><tr><th>Kelas</th><th>Tingkat</th><th>Wali Kelas</th><th>Kapasitas</th></tr></thead>
+      <tbody>${list.map(k=>{const wali=Modules.guru.get(k.waliKelas);return `<tr><td><b>${escapeHtml(k.nama)}</b></td><td>${escapeHtml(k.tingkat)}</td>
+        <td>${escapeHtml(wali?wali.nama:'-')}${k.waliKelas===g.id?' <span class="badge badge-info">Anda</span>':''}</td>
+        <td>${escapeHtml(k.kapasitas)}</td></tr>`}).join('')}</tbody></table></div>
+      ${list.length===0?`<div class="empty-state"><i class="fa-solid fa-school"></i><div class="t">Belum ada data kelas</div><div>Admin belum menambahkan data kelas.</div></div>`:''}
+    </div></div>`;
+  },
+  jadwal(){
+    const g=Modules.guru.get(GuruApp.currentId);
+    const list=Modules.jadwal.all().filter(j=>j.guru===g.id);
+    const hariOrder=['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'];
+    list.sort((a,b)=>hariOrder.indexOf(a.hari)-hariOrder.indexOf(b.hari)||a.jamMulai.localeCompare(b.jamMulai));
+    return `<div class="fade-in"><div class="table-wrap"><div style="overflow-x:auto">
+      <table><thead><tr><th>Hari</th><th>Jam</th><th>Kelas</th><th>Mapel</th></tr></thead>
+      <tbody>${list.map(j=>{const k=Modules.kelas.get(j.kelas);return `<tr><td><b>${escapeHtml(j.hari)}</b></td><td>${escapeHtml(j.jamMulai)} - ${escapeHtml(j.jamSelesai)}</td><td>${escapeHtml(k?k.nama:'-')}</td><td>${escapeHtml(j.mapel)}</td></tr>`}).join('')}</tbody></table></div>
+      ${list.length===0?`<div class="empty-state"><i class="fa-solid fa-calendar-days"></i><div class="t">Belum ada jadwal untukmu</div><div>Admin belum menambahkan jadwal mengajar atasnamamu.</div></div>`:''}
+    </div></div>`;
+  },
+  scan(){return ScanUI.pageHtml()},
+  profil(){
+    const g=Modules.guru.get(GuruApp.currentId);
+    return `<div class="fade-in"><div class="card" style="max-width:520px">
+      <div class="section-label">Data Pribadi</div>
+      <div class="field"><label>Nama Lengkap</label><input class="input" id="gp-nama" value="${escapeHtml(g.nama)}"></div>
+      <div class="field"><label>No HP</label><input class="input" id="gp-hp" value="${escapeHtml(g.hp||'')}"></div>
+      <div class="field"><label>Email</label><input class="input" id="gp-email" value="${escapeHtml(g.email)}"></div>
+      <button class="btn btn-accent" onclick="GuruAuth.saveProfil()"><i class="fa-solid fa-floppy-disk"></i> Simpan Perubahan</button>
+      <div class="field-hint" style="margin-top:10px">Data resmi seperti NIP dan status mengajar hanya dapat diubah oleh Admin.</div>
+      <div class="section-label">Frasa Login Saya</div>
+      <p style="font-size:12.5px;color:var(--text-soft);margin-bottom:10px">Ini frasa yang kamu pakai untuk masuk. Simpan baik-baik, jangan dibagikan.</p>
+      <button class="btn btn-ghost" onclick="GuruAuth.toggleSeed(this)"><i class="fa-solid fa-eye"></i> Tampilkan Frasa Saya</button>
+      <div id="gpSeedBox" class="hidden" style="margin-top:10px"></div>
+      <div class="section-label">Sesi</div>
+      <button class="btn btn-danger btn-block" onclick="GuruApp.logout()"><i class="fa-solid fa-arrow-right-from-bracket"></i> Keluar dari Portal Guru</button>
+    </div></div>`;
+  }
+};
+const BIP39_DISTRACTORS=['abandon','ability','able','about','above','absent','absorb','abstract','absurd','abuse','access','accident','account','accuse','achieve','acid','acoustic','acquire','across','act','action','actor','actual','adapt','add','addict','address','adjust','admit','adult'];
+const Setup={
+  seed:[],
+  toStep2(){
+    const school=$('#su-school').value.trim();
+    const name=$('#su-name').value.trim();
+    const email=$('#su-email').value.trim();
+    const pass=$('#su-pass').value;
+    const pass2=$('#su-pass2').value;
+    let ok=true;
+    const emailField=$('#su-email').closest('.field');
+    const passField=$('#su-pass2').closest('.field');
+    emailField.classList.remove('invalid');passField.classList.remove('invalid');
+    if(!school||!name){toast('Lengkapi nama sekolah & admin','error');return;}
+    if(!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)){emailField.classList.add('invalid');ok=false;}
+    if(pass.length<8){toast('Password minimal 8 karakter','error');ok=false;}
+    if(pass!==pass2){passField.classList.add('invalid');ok=false;}
+    if(!ok)return;
+    Setup._draft={school,name,email,pass};
+    Setup._wallet=genRealWallet();
+    Setup.seed=Setup._wallet.mnemonic;
+    const grid=$('#seedGrid');
+    grid.innerHTML=Setup.seed.map((w,i)=>`<div class="seed-word"><b>${i+1}</b>${w}</div>`).join('');
+    grid.classList.remove('revealed');
+    $('#seedOverlay').classList.remove('hide');
+    $('#su-confirm-saved').checked=false;
+    $('#seedCopyBtn').disabled=true;
+    $('#seedCopyBtn').dataset.phrase=Setup.seed.join(' ');
+    $('#setup-step-1').classList.add('hidden');
+    $('#setup-step-2').classList.remove('hidden');
+    $('#dot1').classList.add('done');$('#dot2').classList.add('active');
+    if(!Setup._wallet.real)toast('Library crypto belum termuat (cek koneksi internet) — memakai kunci sementara','info');
+  },
+  revealSeed(){$('#seedGrid').classList.add('revealed');$('#seedOverlay').classList.add('hide');$('#seedCopyBtn').disabled=false;},
+  backTo1(){$('#setup-step-2').classList.add('hidden');$('#setup-step-1').classList.remove('hidden');$('#dot2').classList.remove('active')},
+  toStep3(){
+    if(!$('#su-confirm-saved').checked){toast('Centang konfirmasi bahwa Anda telah menyimpan frasa','error');return;}
+    $('#setup-step-2').classList.add('hidden');
+    $('#setup-step-3').classList.remove('hidden');
+    $('#dot2').classList.add('done');$('#dot3').classList.add('active');
+    Setup.buildConfirm();
+  },
+  backTo2(){$('#setup-step-3').classList.add('hidden');$('#setup-step-2').classList.remove('hidden');$('#dot3').classList.remove('active')},
+  confirmState:{},
+  buildConfirm(){
+    const positions=[];
+    while(positions.length<3){const p=Math.floor(Math.random()*12);if(!positions.includes(p))positions.push(p);}
+    positions.sort((a,b)=>a-b);
+    Setup.confirmState={positions,answers:{}};
+    const grid=$('#seedConfirmGrid');
+    grid.innerHTML=positions.map(pos=>{
+      const correct=Setup.seed[pos];
+      const distractors=BIP39_DISTRACTORS.filter(w=>!Setup.seed.includes(w)).sort(()=>.5-Math.random()).slice(0,3);
+      const choices=[correct,...distractors].sort(()=>.5-Math.random());
+      return `<div class="seed-confirm-item"><div class="q">Kata ke-${pos+1} adalah?</div>
+        <div class="chip-row">${choices.map(c=>`<div class="chip" data-pos="${pos}" data-word="${c}" onclick="Setup.pick(${pos},'${c}',this)">${c}</div>`).join('')}</div></div>`;
+    }).join('');
+    $('#su-finish-btn').disabled=true;
+  },
+  pick(pos,word,el){
+    Setup.confirmState.answers[pos]=word;
+    $$(`.chip[data-pos="${pos}"]`).forEach(c=>c.classList.remove('selected'));
+    el.classList.add('selected');
+    const {positions,answers}=Setup.confirmState;
+    const allPicked=positions.every(p=>answers[p]!==undefined);
+    $('#su-finish-btn').disabled=!allPicked;
+  },
+  finish(){
+    const {positions,answers}=Setup.confirmState;
+    const allCorrect=positions.every(p=>answers[p]===Setup.seed[p]);
+    if(!allCorrect){toast('Ada kata yang tidak cocok, silakan cek kembali frasa Anda','error');Setup.buildConfirm();return;}
+    const d=Setup._draft, w=Setup._wallet;
+    const admin={
+      school:d.school,name:d.name,email:d.email,password:d.pass,
+      wallet:w.address,publicKey:w.publicKey,privateKey:w.privateKey,
+      seedPhrase:btoa(unescape(encodeURIComponent(Setup.seed.join(' ')))),
+      cryptoReal:w.real,
+      createdAt:new Date().toISOString()
+    };
+    DB.set('admin',admin);
+    DB.set('session',{loggedIn:true,role:'admin',at:new Date().toISOString()});
+    Chain.add('Akun admin dibuat','admin',d.name);
+    toast('Akun admin berhasil dibuat','success');
+    Auth.session=true;
+    App.boot();
+  },
+  gotoLogin(){$('#screen-setup').classList.add('hidden');$('#screen-login').classList.remove('hidden');PortalUI.switch('admin')}
+};
+
+const Recovery={
+  open(){$('#login-form').classList.add('hidden');$('#recovery-form').classList.remove('hidden')},
+  close(){$('#recovery-form').classList.add('hidden');$('#login-form').classList.remove('hidden')},
+  submit(){
+    const input=$('#rec-phrase').value.trim().toLowerCase().split(/\s+/);
+    const newpass=$('#rec-newpass').value;
+    const admin=Auth.getAdmin();
+    const errEl=$('#rec-error');
+    errEl.style.display='none';
+    if(!admin){toast('Belum ada akun admin terdaftar','error');return;}
+    const stored=decodeURIComponent(escape(atob(admin.seedPhrase))).split(' ');
+    const match=input.length===12 && input.every((w,i)=>w===stored[i]);
+    if(!match){errEl.style.display='block';return;}
+    if(newpass.length<8){toast('Password baru minimal 8 karakter','error');return;}
+    admin.password=newpass;
+    DB.set('admin',admin);
+    Chain.add('Pemulihan akun via frasa','admin',admin.name);
+    toast('Password berhasil direset, silakan masuk','success');
+    Recovery.close();
+  }
+};
+
+/* ===================== MODAL / SHEET HELPERS ===================== */
+function openModalHtml(html,size=''){
+  const root=$('#modal-root');
+  root.innerHTML=`<div class="modal-backdrop" id="dynModalBackdrop"><div class="modal ${size}">${html}</div></div>`;
+  requestAnimationFrame(()=>$('#dynModalBackdrop').classList.add('open'));
+  $('#dynModalBackdrop').addEventListener('click',e=>{if(e.target.id==='dynModalBackdrop')closeModal()});
+}
+function closeModal(){
+  const bd=$('#dynModalBackdrop');
+  if(!bd)return;
+  bd.classList.remove('open');
+  setTimeout(()=>{$('#modal-root').innerHTML=''},200);
+}
+const MobileMenu={
+  open(){$('#mobileSheet').classList.add('open');$('#sheetBackdrop').classList.add('open')},
+  close(){$('#mobileSheet').classList.remove('open');$('#sheetBackdrop').classList.remove('open')}
+};
+
+/* ===================== ENTITY SCHEMAS (generic CRUD engine) ===================== */
+const Schemas={
+  siswa:{
+    label:'Siswa',plural:'Data Siswa',idPrefix:'STD',icon:'fa-user-graduate',identity:true,
+    fields:[
+      {key:'nama',label:'Nama Lengkap',type:'text',required:true},
+      {key:'nisn',label:'NISN',type:'text',required:true,pattern:/^\d{10}$/,hint:'10 digit angka',err:'NISN harus 10 digit angka'},
+      {key:'nik',label:'NIK',type:'text',required:true,pattern:/^\d{16}$/,hint:'16 digit angka',err:'NIK harus 16 digit angka'},
+      {key:'gender',label:'Jenis Kelamin',type:'select',options:['Laki-laki','Perempuan'],required:true},
+      {key:'tgl',label:'Tanggal Lahir',type:'date',required:true},
+      {key:'alamat',label:'Alamat',type:'textarea'},
+      {key:'hp',label:'No HP',type:'text',pattern:/^(08\d{7,11}|\+62\d{8,12})$/,hint:'cth. 081234567890',err:'Format nomor HP tidak valid'},
+      {key:'email',label:'Email',type:'email',required:true,pattern:/^[^\s@]+@[^\s@]+\.[^\s@]+$/,err:'Format email tidak valid'},
+      {key:'kelas',label:'Kelas',type:'kelasSelect',required:true,hint:'Dipilih dari Data Kelas — otomatis terhubung ke jadwal & Portal Siswa'}
+    ],
+    columns:[{key:'nama',label:'Nama'},{key:'nisn',label:'NISN'},{key:'kelas',label:'Kelas',resolve:'kelas'},{key:'wallet',label:'Wallet',mono:true,truncate:true},{key:'status',label:'Status',badge:true}]
+  },
+  guru:{
+    label:'Guru',plural:'Data Guru',idPrefix:'TCH',icon:'fa-chalkboard-user',identity:true,
+    fields:[
+      {key:'nama',label:'Nama Lengkap',type:'text',required:true},
+      {key:'nip',label:'NIP',type:'text',required:true,pattern:/^\d{8,18}$/,hint:'8-18 digit angka',err:'NIP tidak valid'},
+      {key:'gender',label:'Jenis Kelamin',type:'select',options:['Laki-laki','Perempuan'],required:true},
+      {key:'mapel',label:'Mata Pelajaran',type:'text',required:true},
+      {key:'statusMengajar',label:'Status Mengajar',type:'select',options:['Aktif','Cuti','Non-aktif'],required:true},
+      {key:'hp',label:'No HP',type:'text',pattern:/^(08\d{7,11}|\+62\d{8,12})$/,hint:'cth. 081234567890',err:'Format nomor HP tidak valid'},
+      {key:'email',label:'Email',type:'email',required:true,pattern:/^[^\s@]+@[^\s@]+\.[^\s@]+$/,err:'Format email tidak valid'}
+    ],
+    columns:[{key:'nama',label:'Nama'},{key:'nip',label:'NIP'},{key:'mapel',label:'Mapel'},{key:'wallet',label:'Wallet',mono:true,truncate:true},{key:'statusMengajar',label:'Status',badge:true}]
+  },
+  kelas:{
+    label:'Kelas',plural:'Data Kelas',idPrefix:'CLS',icon:'fa-school',identity:false,
+    fields:[
+      {key:'nama',label:'Nama Kelas',type:'text',required:true,placeholder:'cth. XII RPL 1'},
+      {key:'tingkat',label:'Tingkat',type:'select',options:['X','XI','XII'],required:true},
+      {key:'waliKelas',label:'Wali Kelas',type:'guruSelect',required:true,hint:'Dipilih dari Data Guru — otomatis terhubung ke Portal Guru'},
+      {key:'kapasitas',label:'Kapasitas Siswa',type:'number',required:true}
+    ],
+    columns:[{key:'nama',label:'Kelas'},{key:'tingkat',label:'Tingkat'},{key:'waliKelas',label:'Wali Kelas',resolve:'guru'},{key:'kapasitas',label:'Kapasitas'}]
+  },
+  inventaris:{
+    label:'Barang',plural:'Inventaris',idPrefix:'INV',icon:'fa-laptop',identity:true,
+    fields:[
+      {key:'nama',label:'Nama Barang',type:'text',required:true},
+      {key:'kategori',label:'Kategori',type:'select',options:['Laptop','Tablet','Proyektor','Komputer','Printer','Router'],required:true},
+      {key:'kode',label:'Kode Aset',type:'text',required:true},
+      {key:'status',label:'Status',type:'select',options:['Tersedia','Dipinjam','Rusak','Maintenance'],required:true},
+      {key:'lokasi',label:'Lokasi',type:'text'}
+    ],
+    columns:[{key:'nama',label:'Barang'},{key:'kategori',label:'Kategori'},{key:'kode',label:'Kode',mono:true},{key:'status',label:'Status',badge:true}]
+  },
+  perpustakaan:{
+    label:'Buku',plural:'Perpustakaan',idPrefix:'LIB',icon:'fa-book',identity:false,
+    fields:[
+      {key:'judul',label:'Judul Buku',type:'text',required:true},
+      {key:'penulis',label:'Penulis',type:'text',required:true},
+      {key:'kategori',label:'Kategori',type:'text',required:true},
+      {key:'jumlah',label:'Jumlah',type:'number',required:true},
+      {key:'status',label:'Status',type:'select',options:['Tersedia','Dipinjam Semua'],required:true}
+    ],
+    columns:[{key:'judul',label:'Judul'},{key:'penulis',label:'Penulis'},{key:'kategori',label:'Kategori'},{key:'jumlah',label:'Jumlah'},{key:'status',label:'Status',badge:true}]
+  },
+  jadwal:{
+    label:'Jadwal',plural:'Jadwal Pelajaran',idPrefix:'SCH',icon:'fa-calendar-days',identity:false,
+    fields:[
+      {key:'kelas',label:'Kelas',type:'kelasSelect',required:true},
+      {key:'guru',label:'Guru Pengajar',type:'guruSelect',required:true},
+      {key:'mapel',label:'Mata Pelajaran',type:'text',required:true},
+      {key:'hari',label:'Hari',type:'select',options:['Senin','Selasa','Rabu','Kamis','Jumat','Sabtu'],required:true},
+      {key:'jamMulai',label:'Jam Mulai',type:'time',required:true},
+      {key:'jamSelesai',label:'Jam Selesai',type:'time',required:true}
+    ],
+    columns:[{key:'hari',label:'Hari'},{key:'kelas',label:'Kelas',resolve:'kelas'},{key:'mapel',label:'Mapel'},{key:'guru',label:'Guru',resolve:'guru'},{key:'jamMulai',label:'Mulai'},{key:'jamSelesai',label:'Selesai'}]
+  }
+};
+
+/* ===================== GENERIC ENTITY MODULE ===================== */
+function EntityModule(key){
+  const schema=Schemas[key];
+  const state={search:'',page:1,perPage:8,sortKey:null,sortDir:1};
+  return {
+    schema,
+    all(){return DB.get(key,[])},
+    save(list){DB.set(key,list)},
+    add(data){
+      const list=this.all();
+      const record={id:uid(schema.idPrefix),...data,createdAt:new Date().toISOString()};
+      if(schema.identity){
+        const w=genRealWallet();
+        record.wallet=w.address;
+        record.publicKey=w.publicKey;
+        record.privateKey=w.privateKey;
+        record.seedPhrase=w.mnemonic.join(' ');
+        record.cryptoReal=w.real;
+        record.status=record.status||'Aktif';
+      }
+      list.push(record);this.save(list);
+      Chain.add(`Tambah ${schema.label}`,key,data.nama||data.judul,record.wallet);
+      return record;
+    },
+    update(id,data){
+      const list=this.all();
+      const idx=list.findIndex(r=>r.id===id);
+      if(idx>-1){list[idx]={...list[idx],...data};this.save(list);Chain.add(`Perbarui ${schema.label}`,key,list[idx].nama||list[idx].judul,list[idx].wallet);}
+    },
+    remove(id){
+      let list=this.all();
+      const rec=list.find(r=>r.id===id);
+      list=list.filter(r=>r.id!==id);this.save(list);
+      Chain.add(`Hapus ${schema.label}`,key,rec?(rec.nama||rec.judul):id,rec?rec.wallet:undefined);
+    },
+    toggleStatus(id,newStatus){
+      this.update(id,{status:newStatus});
+    },
+    get(id){return this.all().find(r=>r.id===id)},
+    filtered(){
+      let list=this.all();
+      if(state.search){
+        const s=state.search.toLowerCase();
+        list=list.filter(r=>Object.values(r).some(v=>String(v).toLowerCase().includes(s)));
+      }
+      if(state.sortKey){
+        list=list.slice().sort((a,b)=>{
+          const av=String(a[state.sortKey]||'').toLowerCase(), bv=String(b[state.sortKey]||'').toLowerCase();
+          return av<bv?-1*state.sortDir:av>bv?1*state.sortDir:0;
+        });
+      }
+      return list;
+    },
+    state
+  };
+}
+const Modules={siswa:EntityModule('siswa'),guru:EntityModule('guru'),kelas:EntityModule('kelas'),inventaris:EntityModule('inventaris'),perpustakaan:EntityModule('perpustakaan'),jadwal:EntityModule('jadwal')};
+
+/* ---- generic table renderer ---- */
+function renderEntityPage(key){
+  const mod=Modules[key], schema=mod.schema, st=mod.state;
+  const data=mod.filtered();
+  const total=data.length;
+  const start=(st.page-1)*st.perPage;
+  const pageData=data.slice(start,start+st.perPage);
+  const totalPages=Math.max(1,Math.ceil(total/st.perPage));
+
+  const rowsHtml=pageData.length?pageData.map(r=>{
+    const cells=schema.columns.map(c=>{
+      let val=r[c.key]??'-';
+      if(c.resolve==='guru'){
+        const g=Modules.guru.get(val);
+        val=g?g.nama:(val==='-'?'-':'(guru tidak ditemukan)');
+      }
+      if(c.resolve==='kelas'){
+        const k=Modules.kelas.get(val);
+        val=k?k.nama:(val==='-'?'-':'(kelas tidak ditemukan)');
+      }
+      if(c.mono){
+        const short=c.truncate&&val.length>16?val.slice(0,8)+'…'+val.slice(-6):val;
+        return `<td><span class="mono" style="font-size:12px" title="${escapeHtml(val)}">${escapeHtml(short)}</span></td>`;
+      }
+      if(c.badge){
+        const map={'Aktif':'success','Tersedia':'success','Dipinjam':'warning','Rusak':'danger','Maintenance':'warning','Non-aktif':'danger','Cuti':'warning','Dipinjam Semua':'warning'};
+        return `<td><span class="badge badge-${map[val]||'info'}">${escapeHtml(val)}</span></td>`;
+      }
+      if(c===schema.columns[0]){
+        return `<td><div style="display:flex;align-items:center;gap:10px"><div class="row-avatar">${initials(val)}</div><span style="font-weight:600">${escapeHtml(val)}</span></div></td>`;
+      }
+      return `<td>${escapeHtml(val)}</td>`;
+    }).join('');
+    return `<tr>${cells}<td><div class="row-actions">
+      <button class="icon-btn" title="Detail" onclick="EntityUI.detail('${key}','${r.id}')"><i class="fa-solid fa-eye"></i></button>
+      <button class="icon-btn" title="Edit" onclick="EntityUI.openForm('${key}','${r.id}')"><i class="fa-solid fa-pen"></i></button>
+      <button class="icon-btn" title="Hapus" onclick="EntityUI.confirmDelete('${key}','${r.id}')"><i class="fa-solid fa-trash"></i></button>
+    </div></td></tr>`;
+  }).join(''):'';
+
+  const emptyHtml=`<div class="empty-state"><i class="fa-solid ${schema.icon}"></i><div class="t">Belum ada data ${schema.label.toLowerCase()}</div>
+    <div>Klik "Tambah ${schema.label}" untuk mulai mencatat.</div></div>`;
+
+  const headHtml=schema.columns.map(c=>`<th onclick="EntityUI.sort('${key}','${c.key}')">${c.label}${st.sortKey===c.key?` <i class="fa-solid fa-arrow-${st.sortDir===1?'up':'down'}"></i>`:''}</th>`).join('')+'<th style="text-align:right">Aksi</th>';
+
+  let pagerHtml='';
+  for(let i=1;i<=totalPages;i++){pagerHtml+=`<button class="${i===st.page?'active':''}" onclick="EntityUI.gotoPage('${key}',${i})">${i}</button>`}
+
+  return `
+  <div class="fade-in">
+    <div class="toolbar">
+      <div class="search-box"><i class="fa-solid fa-magnifying-glass"></i><input placeholder="Cari ${schema.label.toLowerCase()}..." value="${escapeHtml(st.search)}" oninput="EntityUI.search('${key}',this.value)"></div>
+      <button class="btn btn-primary" style="margin-left:auto" onclick="EntityUI.openForm('${key}')"><i class="fa-solid fa-plus"></i> Tambah ${schema.label}</button>
+    </div>
+    <div class="table-wrap">
+      <div style="overflow-x:auto">
+      <table><thead><tr>${headHtml}</tr></thead><tbody>${rowsHtml}</tbody></table>
+      </div>
+      ${total===0?emptyHtml:''}
+      ${total>0?`<div class="table-foot"><span>Menampilkan ${start+1}-${Math.min(start+st.perPage,total)} dari ${total} data</span><div class="pager">${pagerHtml}</div></div>`:''}
+    </div>
+  </div>`;
+}
+
+const EntityUI={
+  search(key,val){Modules[key].state.search=val;Modules[key].state.page=1;Router.render()},
+  sort(key,col){const st=Modules[key].state;if(st.sortKey===col)st.sortDir*=-1;else{st.sortKey=col;st.sortDir=1}Router.render()},
+  gotoPage(key,p){Modules[key].state.page=p;Router.render()},
+  openForm(key,id){
+    const mod=Modules[key], schema=mod.schema;
+    const rec=id?mod.get(id):null;
+    const fieldsHtml=schema.fields.map(f=>{
+      const val=rec?(rec[f.key]??''):'';
+      let input='';
+      if(f.type==='select'){
+        input=`<select class="select" id="f_${f.key}">${f.options.map(o=>`<option ${val===o?'selected':''}>${o}</option>`).join('')}</select>`;
+      } else if(f.type==='guruSelect'){
+        const guruList=Modules.guru.all();
+        input=guruList.length
+          ? `<select class="select" id="f_${f.key}"><option value="">— Pilih Guru —</option>${guruList.map(g=>`<option value="${g.id}" ${val===g.id?'selected':''}>${escapeHtml(g.nama)}${g.mapel?' · '+escapeHtml(g.mapel):''}</option>`).join('')}</select>`
+          : `<select class="select" id="f_${f.key}" disabled><option value="">Belum ada data Guru — tambahkan di menu Data Guru dulu</option></select>`;
+      } else if(f.type==='kelasSelect'){
+        const kelasList=Modules.kelas.all();
+        input=kelasList.length
+          ? `<select class="select" id="f_${f.key}"><option value="">— Pilih Kelas —</option>${kelasList.map(k=>`<option value="${k.id}" ${val===k.id?'selected':''}>${escapeHtml(k.nama)}</option>`).join('')}</select>`
+          : `<select class="select" id="f_${f.key}" disabled><option value="">Belum ada data Kelas — tambahkan di menu Data Kelas dulu</option></select>`;
+      } else if(f.type==='textarea'){
+        input=`<textarea class="textarea" id="f_${f.key}" placeholder="${f.placeholder||''}">${escapeHtml(val)}</textarea>`;
+      } else if(f.type==='password'){
+        input=`<div class="input-group"><input class="input" type="password" id="f_${f.key}" value="${escapeHtml(val)}" placeholder="${rec?'Kosongkan jika tidak diubah':''}"><i class="fa-regular fa-eye toggle-eye" data-target="f_${f.key}"></i></div>`;
+      } else {
+        input=`<input class="input" type="${f.type}" id="f_${f.key}" value="${escapeHtml(val)}" placeholder="${f.placeholder||''}">`;
+      }
+      return `<div class="field" id="wrap_${f.key}"><label>${f.label} ${f.required?'<span class="req">*</span>':''}</label>${input}
+        <div class="field-error">${f.err||'Wajib diisi'}</div>${f.hint?`<div class="field-hint">${f.hint}</div>`:''}</div>`;
+    }).join('');
+    openModalHtml(`
+      <div class="modal-head"><h3>${rec?'Edit':'Tambah'} ${schema.label}</h3><button class="icon-btn" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button></div>
+      <div class="modal-body">${fieldsHtml}</div>
+      <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Batal</button>
+      <button class="btn btn-primary" onclick="EntityUI.submitForm('${key}','${id||''}')"><i class="fa-solid fa-floppy-disk"></i> Simpan</button></div>
+    `,'modal-lg');
+  },
+  submitForm(key,id){
+    const mod=Modules[key], schema=mod.schema;
+    const data={}; let valid=true;
+    schema.fields.forEach(f=>{
+      const el=$('#f_'+f.key);
+      const wrap=$('#wrap_'+f.key);
+      wrap.classList.remove('invalid');
+      let val=el.value.trim();
+      if(f.type==='password' && !val && id){ data[f.key]=undefined; return; } // keep existing on edit if blank
+      if(f.required && !val){wrap.classList.add('invalid');valid=false;return;}
+      if(f.pattern && val && !f.pattern.test(val)){wrap.classList.add('invalid');valid=false;return;}
+      if(f.minlen && val && val.length<f.minlen){wrap.classList.add('invalid');valid=false;return;}
+      data[f.key]=val;
+    });
+    if(!valid){toast('Periksa kembali data yang belum valid','error');return;}
+    Object.keys(data).forEach(k=>data[k]===undefined&&delete data[k]);
+    if(id){
+      mod.update(id,data);
+      toast(`${schema.label} berhasil diperbarui`,'success');
+      closeModal();
+      Router.render();
+    } else {
+      const record=mod.add(data);
+      toast(`${schema.label} berhasil ditambahkan`,'success');
+      closeModal();
+      Router.render();
+      if(schema.identity && record.seedPhrase) EntityUI.showFreshPhrase(key,record);
+    }
+  },
+  showFreshPhrase(key,record){
+    const words=record.seedPhrase.split(' ');
+    openModalHtml(`
+      <div class="modal-head"><h3>Frasa Identitas ${escapeHtml(record.nama)}</h3><button class="icon-btn" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button></div>
+      <div class="modal-body">
+        <div class="seed-warning"><i class="fa-solid fa-triangle-exclamation"></i> Ini satu-satunya cara ${Modules[key]===Modules.siswa?'siswa':'guru'} ini login ke Portal-nya. Catat/berikan frasa ini sekarang — tidak ditampilkan otomatis lagi setelah ini ditutup (admin masih bisa membukanya lagi lewat menu Detail).</div>
+        ${seedRevealBlockHtml(words)}
+      </div>
+      <div class="modal-foot"><button class="btn btn-primary btn-block" onclick="closeModal()">Sudah Dicatat</button></div>
+    `);
+  },
+  confirmDelete(key,id){
+    const mod=Modules[key], rec=mod.get(id);
+    openModalHtml(`
+      <div class="modal-head"><h3>Hapus ${mod.schema.label}?</h3><button class="icon-btn" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button></div>
+      <div class="modal-body"><p>Tindakan ini tidak dapat dibatalkan. Data <b>${escapeHtml(rec.nama||rec.judul)}</b> akan dihapus permanen.</p></div>
+      <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Batal</button>
+      <button class="btn btn-danger" onclick="EntityUI.doDelete('${key}','${id}')"><i class="fa-solid fa-trash"></i> Hapus</button></div>
+    `);
+  },
+  doDelete(key,id){Modules[key].remove(id);closeModal();toast('Data berhasil dihapus','success');Router.render()},
+  detail(key,id){
+    const mod=Modules[key], rec=mod.get(id), schema=mod.schema;
+    const infoRows=schema.fields.filter(f=>f.type!=='password').map(f=>{
+      let display=rec[f.key]||'-';
+      if(f.type==='guruSelect'){const g=Modules.guru.get(display);display=g?g.nama:'-';}
+      if(f.type==='kelasSelect'){const k=Modules.kelas.get(display);display=k?k.nama:'-';}
+      return `<div class="ledger-row"><span class="k">${f.label}</span><span class="v">${escapeHtml(display)}</span></div>`;
+    }).join('');
+    let identityBlock='';
+    if(schema.identity){
+      identityBlock=`
+      <div class="section-label">Identitas Digital ${rec.cryptoReal?'<span class="badge badge-success" style="margin-left:6px">BIP-39 Asli</span>':'<span class="badge badge-warning" style="margin-left:6px">Mode Cadangan</span>'}</div>
+      <div style="display:flex;gap:18px;flex-wrap:wrap;align-items:flex-start">
+        <div class="qr-box" id="qrTarget"></div>
+        <div style="flex:1;min-width:200px">
+          <div class="ledger-row"><span class="k">ID</span><span class="v">${rec.id}</span></div>
+          <div class="ledger-row"><span class="k">Wallet</span><span class="v">${rec.wallet}</span></div>
+          <div class="ledger-row"><span class="k">Public Key</span><span class="v">${rec.publicKey}</span></div>
+          <div class="ledger-row"><span class="k">Dibuat</span><span class="v">${fmtDateTime(rec.createdAt)}</span></div>
+        </div>
+      </div>
+      <button class="btn btn-ghost btn-sm" style="margin-top:12px" onclick="EntityUI.toggleSeed('${key}','${id}',this)"><i class="fa-solid fa-eye"></i> Lihat Frasa Pemulihan</button>
+      <div id="seedRevealBox_${id}" class="hidden" style="margin-top:10px"></div>`;
+    }
+    openModalHtml(`
+      <div class="modal-head"><h3>Detail ${schema.label}</h3><button class="icon-btn" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button></div>
+      <div class="modal-body">
+        <div class="section-label">Biodata</div>
+        <div class="detail-grid">${infoRows}</div>
+        ${identityBlock}
+      </div>
+      <div class="modal-foot">
+        ${schema.identity?`<button class="btn btn-ghost" onclick="EntityUI.regenerateIdentity('${key}','${id}')"><i class="fa-solid fa-rotate"></i> Buat Ulang Identitas</button>`:''}
+        <button class="btn btn-primary" onclick="closeModal()">Tutup</button>
+      </div>
+    `,'modal-lg');
+    if(schema.identity && window.QRCode){
+      new QRCode($('#qrTarget'),{text:JSON.stringify({id:rec.id,wallet:rec.wallet,type:key}),width:120,height:120,colorDark:'#0A0F1E'});
+    }
+  },
+  toggleSeed(key,id,btn){
+    const mod=Modules[key], rec=mod.get(id);
+    const box=$('#seedRevealBox_'+id);
+    if(box.classList.contains('hidden')){
+      const words=(rec.seedPhrase||'').split(' ');
+      box.innerHTML=seedRevealBlockHtml(words);
+      box.classList.remove('hidden');
+      btn.innerHTML='<i class="fa-solid fa-eye-slash"></i> Sembunyikan Frasa';
+    } else {
+      box.classList.add('hidden');
+      btn.innerHTML='<i class="fa-solid fa-eye"></i> Lihat Frasa Pemulihan';
+    }
+  },
+  regenerateIdentity(key,id){
+    openModalHtml(`
+      <div class="modal-head"><h3>Buat Ulang Identitas?</h3><button class="icon-btn" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button></div>
+      <div class="modal-body"><p style="font-size:13px;color:var(--text-soft)">Wallet & frasa pemulihan lama akan <b>tidak berlaku lagi</b> untuk login. Gunakan ini kalau orang tersebut kehilangan frasanya. Frasa baru akan langsung ditampilkan untuk kamu catat/berikan ke yang bersangkutan.</p></div>
+      <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Batal</button>
+      <button class="btn btn-danger" onclick="EntityUI.doRegenerateIdentity('${key}','${id}')"><i class="fa-solid fa-rotate"></i> Buat Ulang</button></div>
+    `);
+  },
+  doRegenerateIdentity(key,id){
+    const mod=Modules[key];
+    const w=genRealWallet();
+    mod.update(id,{wallet:w.address,publicKey:w.publicKey,privateKey:w.privateKey,seedPhrase:w.mnemonic.join(' '),cryptoReal:w.real});
+    closeModal();
+    toast('Identitas baru berhasil dibuat','success');
+    openModalHtml(`
+      <div class="modal-head"><h3>Frasa Pemulihan Baru</h3><button class="icon-btn" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button></div>
+      <div class="modal-body">
+        <div class="seed-warning"><i class="fa-solid fa-triangle-exclamation"></i> Catat/berikan frasa ini ke yang bersangkutan sekarang. Frasa ini dipakai untuk login.</div>
+        ${seedRevealBlockHtml(w.mnemonic)}
+      </div>
+      <div class="modal-foot"><button class="btn btn-primary btn-block" onclick="closeModal();EntityUI.detail('${key}','${id}')">Selesai</button></div>
+    `);
+  }
+};
+
+/* ===================== SCAN — kamera QR untuk absensi & peminjaman barang ===================== */
+function currentOperator(){
+  if(!$('#guru-shell').classList.contains('hidden') && typeof GuruApp!=='undefined' && GuruApp.currentId){
+    const g=Modules.guru.get(GuruApp.currentId);
+    if(g) return {name:g.nama,wallet:g.wallet,role:'guru'};
+  }
+  const admin=Auth.getAdmin();
+  return {name:admin?admin.name:'Admin',wallet:admin?admin.wallet:'',role:'admin'};
+}
+function todayStr(){return new Date().toISOString().slice(0,10)}
+
+const ScanUI={
+  mode:'absensi',
+  pendingItem:null,
+  scanner:null,
+  running:false,
+  lastCode:'',
+  lastAt:0,
+  pageHtml(){
+    return `<div class="fade-in">
+      <div class="tabs" id="scanTabs">
+        <div class="tab ${this.mode==='absensi'?'active':''}" onclick="ScanUI.setMode('absensi')"><i class="fa-solid fa-clipboard-check"></i> Absensi Siswa</div>
+        <div class="tab ${this.mode==='peminjaman'?'active':''}" onclick="ScanUI.setMode('peminjaman')"><i class="fa-solid fa-right-left"></i> Peminjaman Barang</div>
+      </div>
+      <div class="grid grid-2">
+        <div class="card">
+          <div class="card-title">Kamera Scanner</div>
+          <div id="scanStatusMsg" class="seed-warning" style="background:var(--primary-soft);color:var(--primary-dark);border-color:var(--border)">
+            ${this.mode==='absensi'?'Arahkan kamera ke QR identitas siswa untuk mencatat kehadiran hari ini.':'Scan QR barang dulu. Kalau barang tersedia, lanjut scan QR peminjam (siswa/guru). Scan ulang barang yang sedang dipinjam untuk mencatat pengembalian.'}
+          </div>
+          <div id="qrReaderRegion" style="width:100%;border-radius:var(--r-md);overflow:hidden;background:#000;min-height:220px"></div>
+          <div style="display:flex;gap:10px;margin-top:14px">
+            <button class="btn btn-primary" id="scanStartBtn" onclick="ScanUI.start()"><i class="fa-solid fa-camera"></i> Mulai Scan</button>
+            <button class="btn btn-ghost hidden" id="scanStopBtn" onclick="ScanUI.stop()"><i class="fa-solid fa-stop"></i> Berhenti</button>
+          </div>
+          <div class="field-hint" style="margin-top:10px">Butuh izin kamera & koneksi HTTPS (otomatis aktif di GitHub Pages/Netlify).</div>
+        </div>
+        <div class="card">
+          <div class="card-title">${this.mode==='absensi'?'Absensi Hari Ini':'Peminjaman Aktif Hari Ini'}</div>
+          <div id="scanLogList">${ScanUI.renderLog()}</div>
+        </div>
+      </div>
+    </div>`;
+  },
+  renderLog(){
+    if(this.mode==='absensi'){
+      const list=DB.get('absensi',[]).filter(a=>a.tanggal===todayStr()).reverse();
+      return list.length?list.map(a=>`<div class="chain-item"><div class="chain-dot"></div>
+        <div style="flex:1"><div class="h">${escapeHtml(a.nama)}</div><div class="t">${fmtDateTime(a.waktu)} · dicatat oleh ${escapeHtml(a.recordedBy)}</div></div>
+        <span class="badge badge-success">Hadir</span></div>`).join(''):
+        `<div class="empty-state"><i class="fa-solid fa-clipboard-check"></i><div class="t">Belum ada absensi hari ini</div></div>`;
+    }
+    const list=DB.get('peminjaman',[]).filter(p=>(p.tanggalPinjam||'').slice(0,10)===todayStr()).reverse();
+    return list.length?list.map(p=>`<div class="chain-item"><div class="chain-dot"></div>
+      <div style="flex:1"><div class="h">${escapeHtml(p.itemNama)} → ${escapeHtml(p.peminjamNama)}</div><div class="t">${fmtDateTime(p.tanggalPinjam)} · dicatat oleh ${escapeHtml(p.recordedBy)}</div></div>
+      <span class="badge ${p.status==='Dipinjam'?'badge-warning':'badge-success'}">${p.status}</span></div>`).join(''):
+      `<div class="empty-state"><i class="fa-solid fa-right-left"></i><div class="t">Belum ada peminjaman hari ini</div></div>`;
+  },
+  setMode(m){
+    this.mode=m; this.pendingItem=null;
+    Router.render(); // admin
+    if(typeof GuruRouter!=='undefined' && !$('#guru-shell').classList.contains('hidden')) GuruRouter.render();
+  },
+  refreshLog(){ const el=$('#scanLogList'); if(el) el.innerHTML=ScanUI.renderLog(); },
+  setStatus(msg){ const el=$('#scanStatusMsg'); if(el) el.textContent=msg; },
+  start(){
+    if(typeof Html5Qrcode==='undefined'){toast('Library scanner belum termuat — cek koneksi internet lalu muat ulang halaman','error');return;}
+    if(this.running)return;
+    const region=$('#qrReaderRegion'); if(!region)return;
+    this.scanner=new Html5Qrcode('qrReaderRegion');
+    this.scanner.start(
+      {facingMode:'environment'},
+      {fps:10,qrbox:220},
+      (decodedText)=>ScanUI.onDecoded(decodedText),
+      ()=>{} // ignore per-frame "not found" errors
+    ).then(()=>{
+      this.running=true;
+      $('#scanStartBtn').classList.add('hidden');
+      $('#scanStopBtn').classList.remove('hidden');
+    }).catch(err=>{
+      toast('Tidak bisa mengakses kamera: izin ditolak atau tidak tersedia','error');
+    });
+  },
+  stop(){
+    if(!this.running||!this.scanner)return;
+    this.scanner.stop().then(()=>this.scanner.clear()).catch(()=>{});
+    this.running=false;
+    const startBtn=$('#scanStartBtn'), stopBtn=$('#scanStopBtn');
+    if(startBtn)startBtn.classList.remove('hidden');
+    if(stopBtn)stopBtn.classList.add('hidden');
+  },
+  onDecoded(text){
+    const now=Date.now();
+    if(text===this.lastCode && (now-this.lastAt)<3000)return; // debounce same code
+    this.lastCode=text; this.lastAt=now;
+    let payload;
+    try{payload=JSON.parse(text)}catch(e){toast('QR tidak dikenali (bukan QR EduChain)','error');return;}
+    if(this.mode==='absensi') this.handleAbsensi(payload);
+    else this.handlePeminjaman(payload);
+  },
+  handleAbsensi(payload){
+    if(payload.type!=='siswa'){toast('Untuk absensi, scan QR milik siswa','error');return;}
+    const s=Modules.siswa.get(payload.id);
+    if(!s){toast('Data siswa tidak ditemukan','error');return;}
+    const list=DB.get('absensi',[]);
+    if(list.some(a=>a.siswaId===s.id && a.tanggal===todayStr())){
+      toast(`${s.nama} sudah tercatat hadir hari ini`,'info');
+      return;
+    }
+    const op=currentOperator();
+    list.push({id:uid('ATT'),siswaId:s.id,nama:s.nama,kelas:s.kelas,tanggal:todayStr(),waktu:new Date().toISOString(),status:'Hadir',recordedBy:op.name});
+    DB.set('absensi',list);
+    Chain.add('Absensi hadir','siswa',s.nama,s.wallet);
+    toast(`Absensi tercatat: ${s.nama}`,'success');
+    this.refreshLog();
+  },
+  handlePeminjaman(payload){
+    if(this.pendingItem){
+      if(payload.type!=='siswa' && payload.type!=='guru'){toast('Sekarang scan QR peminjam (siswa/guru), atau scan barang lain untuk batal','error');return;}
+      const peminjam = payload.type==='siswa' ? Modules.siswa.get(payload.id) : Modules.guru.get(payload.id);
+      if(!peminjam){toast('Data peminjam tidak ditemukan','error');return;}
+      const item=this.pendingItem;
+      Modules.inventaris.update(item.id,{status:'Dipinjam'});
+      const list=DB.get('peminjaman',[]);
+      const op=currentOperator();
+      list.push({id:uid('LOAN'),itemId:item.id,itemNama:item.nama,peminjamId:peminjam.id,peminjamNama:peminjam.nama,peminjamTipe:payload.type,tanggalPinjam:new Date().toISOString(),tanggalKembali:null,status:'Dipinjam',recordedBy:op.name});
+      DB.set('peminjaman',list);
+      Chain.add(`Pinjam barang: ${item.nama}`,'inventaris',peminjam.nama,peminjam.wallet);
+      toast(`${item.nama} dipinjamkan ke ${peminjam.nama}`,'success');
+      this.pendingItem=null;
+      this.setStatus('Scan QR barang lain, atau scan barang yang sedang dipinjam untuk mencatat pengembalian.');
+      this.refreshLog();
+      return;
+    }
+    if(payload.type!=='inventaris'){toast('Untuk peminjaman, scan QR barang terlebih dulu','error');return;}
+    const item=Modules.inventaris.get(payload.id);
+    if(!item){toast('Data barang tidak ditemukan','error');return;}
+    if(item.status==='Dipinjam'){
+      Modules.inventaris.update(item.id,{status:'Tersedia'});
+      const list=DB.get('peminjaman',[]);
+      const openLoan=list.slice().reverse().find(p=>p.itemId===item.id && p.status==='Dipinjam');
+      if(openLoan){openLoan.status='Dikembalikan';openLoan.tanggalKembali=new Date().toISOString();DB.set('peminjaman',list);}
+      Chain.add('Pengembalian barang','inventaris',item.nama,item.wallet);
+      toast(`${item.nama} dikembalikan`,'success');
+      this.refreshLog();
+      return;
+    }
+    if(item.status!=='Tersedia'){toast(`Barang berstatus "${item.status}", tidak bisa dipinjam`,'error');return;}
+    this.pendingItem=item;
+    this.setStatus(`Barang "${item.nama}" siap dipinjam — sekarang scan QR peminjam (siswa/guru).`);
+    toast(`Barang dikenali: ${item.nama}. Scan QR peminjam sekarang.`,'info');
+  }
+};
+
+/* ===================== PAGE RENDERERS ===================== */
+const Pages={
+  dashboard(){
+    const admin=Auth.getAdmin();
+    const chain=Chain.all();
+    return `
+    <div class="fade-in">
+      <div class="grid grid-stats" style="margin-bottom:20px">
+        ${statCard('fa-user-graduate',Modules.siswa.all().length,'Total Siswa','var(--primary)','var(--primary-soft)')}
+        ${statCard('fa-chalkboard-user',Modules.guru.all().length,'Total Guru','var(--accent)','var(--accent-soft)')}
+        ${statCard('fa-school',Modules.kelas.all().length,'Total Kelas','var(--amber)','var(--amber-soft)')}
+        ${statCard('fa-cubes',chain.length,'Blok Ledger','var(--danger)','var(--danger-soft)')}
+      </div>
+      <div class="grid grid-2">
+        <div class="card">
+          <div class="card-title">Aktivitas Sistem Terbaru <a class="link-btn" onclick="Router.go('blockchain')">Lihat semua</a></div>
+          ${chain.length?chain.slice(0,6).map(b=>`
+            <div class="chain-item"><div class="chain-dot"></div>
+              <div style="flex:1"><div class="h">${escapeHtml(b.action)} <span class="mono">· ${escapeHtml(b.refLabel||'')}</span></div>
+              <div class="t">${fmtDateTime(b.timestamp)} · Blok #${b.number}</div></div>
+              <span class="badge badge-success">${b.status}</span>
+            </div>`).join(''):`<div class="empty-state"><i class="fa-solid fa-cubes"></i><div class="t">Belum ada aktivitas</div><div>Aktivitas akan tercatat otomatis di ledger.</div></div>`}
+        </div>
+        <div class="card">
+          <div class="card-title">Ringkasan Aset</div>
+          <div class="ledger-row" style="padding:8px 0;border-bottom:1px solid var(--border)"><span class="k">Inventaris</span><span class="v" style="font-family:var(--font-b)">${Modules.inventaris.all().length} unit</span></div>
+          <div class="ledger-row" style="padding:8px 0;border-bottom:1px solid var(--border)"><span class="k">Buku Perpustakaan</span><span class="v" style="font-family:var(--font-b)">${Modules.perpustakaan.all().reduce((a,b)=>a+Number(b.jumlah||0),0)} eksemplar</span></div>
+          <div class="ledger-row" style="padding:8px 0"><span class="k">Admin</span><span class="v" style="font-family:var(--font-b)">${escapeHtml(admin?.name||'-')}</span></div>
+          <button class="btn btn-ghost btn-block" style="margin-top:14px" onclick="Router.go('laporan')"><i class="fa-solid fa-chart-pie"></i> Buka Laporan Lengkap</button>
+        </div>
+      </div>
+    </div>`;
+  },
+  siswa(){return renderEntityPage('siswa')},
+  guru(){return renderEntityPage('guru')},
+  kelas(){return renderEntityPage('kelas')},
+  jadwal(){return renderEntityPage('jadwal')},
+  inventaris(){return renderEntityPage('inventaris')},
+  perpustakaan(){return renderEntityPage('perpustakaan')},
+  scan(){return ScanUI.pageHtml()},
+  blockchain(){
+    const chain=Chain.all();
+    return `<div class="fade-in">
+      <div class="seed-warning" style="background:var(--primary-soft);color:var(--primary-dark);border-color:var(--border)"><i class="fa-solid fa-circle-info"></i> Halaman ini adalah simulasi ledger untuk keperluan edukasi — hash & rantai blok dibuat secara lokal, bukan jaringan blockchain nyata.</div>
+      <div class="table-wrap">
+        <div style="overflow-x:auto"><table><thead><tr><th>Blok</th><th>Aksi</th><th>Wallet</th><th>Hash</th><th>Hash Sebelumnya</th><th>Waktu</th><th>Status</th></tr></thead>
+        <tbody>${chain.length?chain.map(b=>`<tr>
+          <td><b>#${b.number}</b></td>
+          <td>${escapeHtml(b.action)}<br><span style="color:var(--text-faint);font-size:11px">${escapeHtml(b.refLabel||'')}</span></td>
+          <td class="mono" style="font-size:11.5px">${b.wallet.slice(0,6)}…${b.wallet.slice(-4)}</td>
+          <td class="mono" style="font-size:11.5px">${b.hash.slice(0,10)}…</td>
+          <td class="mono" style="font-size:11.5px">${b.prevHash.slice(0,10)}…</td>
+          <td style="font-size:12px">${fmtDateTime(b.timestamp)}</td>
+          <td><span class="badge badge-success">${b.status}</span></td>
+        </tr>`).join(''):''}</tbody></table></div>
+        ${chain.length===0?`<div class="empty-state"><i class="fa-solid fa-cubes"></i><div class="t">Ledger masih kosong</div><div>Setiap aksi tambah/ubah/hapus data akan otomatis membuat blok baru.</div></div>`:''}
+      </div>
+    </div>`;
+  },
+  laporan(){
+    return `<div class="fade-in">
+      <div class="grid grid-3" style="margin-bottom:16px">
+        <div class="card"><div class="card-title">Siswa per Kelas</div><canvas id="chartSiswaKelas" height="180"></canvas></div>
+        <div class="card"><div class="card-title">Distribusi Kategori Inventaris</div><canvas id="chartInventaris" height="180"></canvas></div>
+        <div class="card"><div class="card-title">Tren Aktivitas Ledger (7 hari)</div><canvas id="chartAktivitas" height="180"></canvas></div>
+      </div>
+      <div class="toolbar">
+        <button class="btn btn-ghost" onclick="toast('Export PDF (simulasi) — fitur ini placeholder untuk demo','info')"><i class="fa-solid fa-file-pdf"></i> Export PDF</button>
+        <button class="btn btn-ghost" onclick="toast('Export Excel (simulasi) — fitur ini placeholder untuk demo','info')"><i class="fa-solid fa-file-excel"></i> Export Excel</button>
+        <button class="btn btn-ghost" onclick="window.print()"><i class="fa-solid fa-print"></i> Print</button>
+      </div>
+    </div>`;
+  },
+  pengaturan(){
+    const admin=Auth.getAdmin();
+    const dark=DB.get('settings',{}).darkMode||false;
+    return `<div class="fade-in">
+      <div class="tabs">
+        <div class="tab active" data-tab="profil" onclick="SettingsUI.tab('profil')">Profil Sekolah</div>
+        <div class="tab" data-tab="tampilan" onclick="SettingsUI.tab('tampilan')">Tampilan</div>
+        <div class="tab" data-tab="keamanan" onclick="SettingsUI.tab('keamanan')">Keamanan</div>
+        <div class="tab" data-tab="data" onclick="SettingsUI.tab('data')">Data</div>
+      </div>
+      <div id="settingsPanel">${SettingsUI.panelProfil(admin)}</div>
+    </div>`;
+  }
+};
+function statCard(icon,num,label,color,bg){
+  return `<div class="stat-card"><div class="top"><div class="stat-icon" style="background:${bg};color:${color}"><i class="fa-solid ${icon}"></i></div></div>
+    <div class="stat-num">${num}</div><div class="stat-label">${label}</div></div>`;
+}
+
+const SettingsUI={
+  tab(name){
+    $$('.tab').forEach(t=>t.classList.toggle('active',t.dataset.tab===name));
+    const admin=Auth.getAdmin();
+    const panel=$('#settingsPanel');
+    if(name==='profil')panel.innerHTML=this.panelProfil(admin);
+    if(name==='tampilan')panel.innerHTML=this.panelTampilan();
+    if(name==='keamanan')panel.innerHTML=this.panelKeamanan(admin);
+    if(name==='data')panel.innerHTML=this.panelData();
+  },
+  panelProfil(admin){
+    return `<div class="card" style="max-width:520px">
+      <div class="field"><label>Nama Sekolah</label><input class="input" id="set-school" value="${escapeHtml(admin.school)}"></div>
+      <div class="field"><label>Nama Admin</label><input class="input" id="set-name" value="${escapeHtml(admin.name)}"></div>
+      <div class="field"><label>Email</label><input class="input" id="set-email" value="${escapeHtml(admin.email)}"></div>
+      <button class="btn btn-primary" onclick="SettingsUI.saveProfil()"><i class="fa-solid fa-floppy-disk"></i> Simpan Perubahan</button>
+    </div>`;
+  },
+  saveProfil(){
+    const admin=Auth.getAdmin();
+    admin.school=$('#set-school').value.trim();admin.name=$('#set-name').value.trim();admin.email=$('#set-email').value.trim();
+    DB.set('admin',admin);toast('Profil sekolah diperbarui','success');Router.render();App.applyIdentity();
+  },
+  panelTampilan(){
+    const dark=DB.get('settings',{}).darkMode||false;
+    return `<div class="card" style="max-width:520px">
+      <div class="setting-row"><div><div class="lbl">Mode Gelap</div><div class="desc">Ubah tampilan dashboard ke tema gelap</div></div>
+      <div class="switch ${dark?'on':''}" onclick="SettingsUI.toggleDark(this)"></div></div>
+    </div>`;
+  },
+  toggleDark(el){
+    el.classList.toggle('on');
+    const settings=DB.get('settings',{});
+    settings.darkMode=el.classList.contains('on');
+    DB.set('settings',settings);
+    document.documentElement.setAttribute('data-theme',settings.darkMode?'dark':'light');
+  },
+  panelKeamanan(admin){
+    return `<div class="card" style="max-width:520px">
+      <div class="section-label">Frasa Pemulihan</div>
+      <p style="font-size:12.5px;color:var(--text-soft);margin-bottom:12px">Tampilkan ulang frasa pemulihan 12 kata Anda. Diperlukan konfirmasi password.</p>
+      <div class="field"><label>Password Saat Ini</label><input class="input" id="set-pass-confirm" type="password"></div>
+      <button class="btn btn-ghost" onclick="SettingsUI.revealPhraseAgain()"><i class="fa-solid fa-eye"></i> Tampilkan Frasa</button>
+      <div id="revealedPhraseBox" style="margin-top:14px"></div>
+    </div>`;
+  },
+  revealPhraseAgain(){
+    const admin=Auth.getAdmin();
+    const pass=$('#set-pass-confirm').value;
+    if(pass!==admin.password){toast('Password salah','error');return;}
+    const words=decodeURIComponent(escape(atob(admin.seedPhrase))).split(' ');
+    $('#revealedPhraseBox').innerHTML=seedRevealBlockHtml(words);
+  },
+  panelData(){
+    return `<div class="card" style="max-width:520px">
+      <div class="setting-row"><div><div class="lbl">Backup Data</div><div class="desc">Unduh seluruh data sistem sebagai file JSON</div></div>
+      <button class="btn btn-ghost btn-sm" onclick="SettingsUI.backup()"><i class="fa-solid fa-download"></i> Backup</button></div>
+      <div class="setting-row"><div><div class="lbl">Restore Data</div><div class="desc">Pulihkan data dari file backup JSON</div></div>
+      <label class="btn btn-ghost btn-sm">Pilih File<input type="file" accept=".json" style="display:none" onchange="SettingsUI.restore(this)"></label></div>
+      <div class="setting-row"><div><div class="lbl" style="color:var(--danger)">Reset Sistem</div><div class="desc">Hapus semua data secara permanen</div></div>
+      <button class="btn btn-danger btn-sm" onclick="SettingsUI.confirmReset()">Reset</button></div>
+    </div>`;
+  },
+  backup(){
+    const dump={};
+    ['admin','siswa','guru','kelas','inventaris','perpustakaan','chain','settings'].forEach(k=>dump[k]=DB.get(k,null));
+    const blob=new Blob([JSON.stringify(dump,null,2)],{type:'application/json'});
+    const a=document.createElement('a');a.href=URL.createObjectURL(blob);a.download='educhain-backup.json';a.click();
+    toast('Backup berhasil diunduh','success');
+  },
+  restore(input){
+    const file=input.files[0]; if(!file)return;
+    const reader=new FileReader();
+    reader.onload=e=>{
+      try{
+        const data=JSON.parse(e.target.result);
+        Object.keys(data).forEach(k=>DB.set(k,data[k]));
+        toast('Data berhasil dipulihkan, memuat ulang...','success');
+        setTimeout(()=>location.reload(),1000);
+      }catch(err){toast('File backup tidak valid','error');}
+    };
+    reader.readAsText(file);
+  },
+  confirmReset(){
+    openModalHtml(`
+      <div class="modal-head"><h3>Reset seluruh sistem?</h3><button class="icon-btn" onclick="closeModal()"><i class="fa-solid fa-xmark"></i></button></div>
+      <div class="modal-body"><p>Semua data siswa, guru, kelas, inventaris, dan ledger akan dihapus permanen. Tindakan ini tidak dapat dibatalkan.</p></div>
+      <div class="modal-foot"><button class="btn btn-ghost" onclick="closeModal()">Batal</button>
+      <button class="btn btn-danger" onclick="SettingsUI.doReset()">Ya, Reset Semua</button></div>
+    `);
+  },
+  doReset(){
+    ['admin','siswa','guru','kelas','inventaris','perpustakaan','chain','settings','session'].forEach(k=>DB.remove(k));
+    localStorage.clear();
+    location.reload();
+  }
+};
+
+/* ===================== ROUTER ===================== */
+const Router={
+  current:'dashboard',
+  go(page){
+    if(this.current==='scan' && page!=='scan' && typeof ScanUI!=='undefined') ScanUI.stop();
+    this.current=page;
+    this.render();
+    $$('.nav-item[data-page]').forEach(n=>n.classList.toggle('active',n.dataset.page===page));
+    $$('.bn-item[data-bn]').forEach(n=>n.classList.toggle('active',n.dataset.bn===page));
+    const titles={dashboard:'Dashboard',siswa:'Data Siswa',guru:'Data Guru',kelas:'Data Kelas',jadwal:'Jadwal Pelajaran',inventaris:'Inventaris',perpustakaan:'Perpustakaan',scan:'Scan Absensi/Pinjam',blockchain:'Blockchain',laporan:'Laporan',pengaturan:'Pengaturan'};
+    $('#pageTitleDesktop').textContent=titles[page];
+    $('#pageTitleMobile').textContent=titles[page];
+    window.scrollTo({top:0,behavior:'smooth'});
+  },
+  render(){
+    const html=Pages[this.current]?Pages[this.current]():'';
+    if(isMobileViewport()){ $('#pageContent').innerHTML=''; $('#pageContentMobile').innerHTML=html; }
+    else { $('#pageContentMobile').innerHTML=''; $('#pageContent').innerHTML=html; }
+    if(this.current==='laporan')setTimeout(renderCharts,50);
+  }
+};
+$$('.nav-item[data-page]').forEach(n=>n.addEventListener('click',()=>Router.go(n.dataset.page)));
+$$('.bn-item[data-bn]').forEach(n=>n.addEventListener('click',()=>Router.go(n.dataset.bn)));
+
+function renderCharts(){
+  const siswa=Modules.siswa.all(), inv=Modules.inventaris.all(), chain=Chain.all();
+  const kelasCount={};
+  siswa.forEach(s=>{const kn=(Modules.kelas.get(s.kelas)||{}).nama||s.kelas||'Tanpa Kelas';kelasCount[kn]=(kelasCount[kn]||0)+1});
+  const kelasLabels=Object.keys(kelasCount).length?Object.keys(kelasCount):['Belum ada data'];
+  const kelasVals=Object.keys(kelasCount).length?Object.values(kelasCount):[0];
+  $$('#chartSiswaKelas').forEach(c1=>new Chart(c1,{type:'bar',data:{labels:kelasLabels,datasets:[{label:'Siswa',data:kelasVals,backgroundColor:'#3450D3',borderRadius:6}]},options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{precision:0}}}}}));
+
+  const kat={};
+  inv.forEach(i=>{kat[i.kategori]=(kat[i.kategori]||0)+1});
+  const katLabels=Object.keys(kat).length?Object.keys(kat):['Belum ada data'];
+  const katVals=Object.keys(kat).length?Object.values(kat):[1];
+  $$('#chartInventaris').forEach(c2=>new Chart(c2,{type:'doughnut',data:{labels:katLabels,datasets:[{data:katVals,backgroundColor:['#3450D3','#0EA894','#E08A1E','#DC4C4C','#8B5CF6','#EC4899']}]},options:{plugins:{legend:{position:'bottom',labels:{boxWidth:10,font:{size:10}}}}}}));
+
+  const days=[...Array(7)].map((_,i)=>{const d=new Date();d.setDate(d.getDate()-(6-i));return d});
+  const dayLabels=days.map(d=>d.toLocaleDateString('id-ID',{weekday:'short'}));
+  const dayCounts=days.map(d=>chain.filter(b=>new Date(b.timestamp).toDateString()===d.toDateString()).length);
+  $$('#chartAktivitas').forEach(c3=>new Chart(c3,{type:'line',data:{labels:dayLabels,datasets:[{label:'Blok',data:dayCounts,borderColor:'#0EA894',backgroundColor:'rgba(14,168,148,.12)',fill:true,tension:.35}]},options:{plugins:{legend:{display:false}},scales:{y:{beginAtZero:true,ticks:{precision:0}}}}}));
+}
+
+/* ===================== CLOCK ===================== */
+function tickClock(){
+  const now=new Date();
+  const time=now.toLocaleTimeString('id-ID',{hour:'2-digit',minute:'2-digit'});
+  const date=now.toLocaleDateString('id-ID',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+  const t=$('#clockTime'),d=$('#clockDate');
+  if(t)t.textContent=time; if(d)d.textContent=date;
+  const gt=$('#gClockTime'),gd=$('#gClockDate');
+  if(gt)gt.textContent=time; if(gd)gd.textContent=date;
+}
+
+/* ===================== APP BOOT ===================== */
+const App={
+  boot(){
+    $('#screen-setup').classList.add('hidden');
+    $('#screen-login').classList.add('hidden');
+    $('#guru-shell').classList.add('hidden');
+    $('#app-shell').classList.remove('hidden');
+    App.applyIdentity();
+    Router.go('dashboard');
+    App.updateNavCounts();
+  },
+  applyIdentity(){
+    const admin=Auth.getAdmin(); if(!admin)return;
+    $('#topAdminName').textContent=admin.name;
+    $('#topAdminSchool').textContent=admin.school;
+    $('#topAvatarInit').textContent=initials(admin.name);
+    $('#mobAvatarInit').textContent=initials(admin.name);
+  },
+  updateNavCounts(){
+    $('#navCountSiswa').textContent=Modules.siswa.all().length;
+    $('#navCountGuru').textContent=Modules.guru.all().length;
+  }
+};
+
+window.addEventListener('DOMContentLoaded',()=>{
+  const settings=DB.get('settings',{});
+  if(settings.darkMode)document.documentElement.setAttribute('data-theme','dark');
+  tickClock();setInterval(tickClock,1000*30);
+
+  setTimeout(()=>{
+    $('#screen-loading').style.display='none';
+    const session=DB.get('session',{loggedIn:false});
+    if(session.loggedIn && session.role==='guru'){
+      GuruApp.boot(session.guruId);
+    } else if(session.loggedIn && session.role==='admin'){
+      Auth.session=true; App.boot();
+    } else {
+      $('#screen-login').classList.remove('hidden');
+      PortalUI.switch('guru');
+    }
+  },900);
+
+  $('#su-pass').addEventListener('input',e=>{
+    const v=e.target.value;
+    const bars=$$('.pw-strength i',$('#setup-step-1'));
+    let score=0;
+    if(v.length>=8)score++; if(/[A-Z]/.test(v))score++; if(/\d/.test(v))score++; if(/[^A-Za-z0-9]/.test(v))score++;
+    const colors=['var(--border)','#DC4C4C','#E08A1E','#3450D3','#0EA894'];
+    bars.forEach((b,i)=>b.style.background=i<score?colors[score]:'var(--border)');
+  });
+
+  document.addEventListener('keydown',e=>{if(e.key==='Escape'){closeModal();MobileMenu.close()}});
+
+  window.addEventListener('resize',debounce(()=>{
+    if(!$('#app-shell').classList.contains('hidden')) Router.render();
+    if(!$('#guru-shell').classList.contains('hidden')) GuruRouter.render();
+  },250));
+});
+</script>
+</body>
+</html>
